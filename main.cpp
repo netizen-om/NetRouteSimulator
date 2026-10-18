@@ -32,6 +32,15 @@ enum class PacketStatus {
 // ============================================================================
 
 /**
+ * @brief Represents the outcome of a network configuration operation.
+ * Separates core network validation/manipulation from user-interface display.
+ */
+struct OperationResult {
+    bool success = false;
+    std::string message;
+};
+
+/**
  * @brief Represents the outcome of a route discovery query.
  * Contains path availability, sequence of router IDs, total link cost, and hop count.
  */
@@ -82,7 +91,7 @@ public:
  * 
  * Single Responsibility:
  * Maintains the network nodes and connections, validates topology modifications,
- * and prints the network adjacency list.
+ * and manages adjacency data without mixing in console I/O.
  */
 class Network {
 private:
@@ -94,33 +103,30 @@ private:
 
 public:
     // Add a new router to the network
-    bool addRouter(const std::string& id) {
+    OperationResult addRouter(const std::string& id) {
         if (id.empty()) {
-            std::cout << "[Error] Router ID cannot be empty.\n";
-            return false;
+            return {false, "Router ID cannot be empty."};
         }
         if (routers_.find(id) != routers_.end()) {
-            std::cout << "[Error] Router '" << id << "' already exists.\n";
-            return false;
+            return {false, "Router '" + id + "' already exists."};
         }
+
         routers_.emplace(id, Router(id));
         adjacencyList_[id] = {};
-        std::cout << "[Success] Router '" << id << "' added successfully.\n";
-        return true;
+        return {true, "Router '" + id + "' added successfully."};
     }
 
     // Remove an existing router and all incident links
-    bool removeRouter(const std::string& id) {
+    OperationResult removeRouter(const std::string& id) {
         if (routers_.find(id) == routers_.end()) {
-            std::cout << "[Error] Router '" << id << "' does not exist.\n";
-            return false;
+            return {false, "Router '" + id + "' does not exist."};
         }
 
         // Remove node from router table and adjacency list
         routers_.erase(id);
         adjacencyList_.erase(id);
 
-        // Remove links referencing this router from all other nodes
+        // Remove links referencing this router from all other nodes to prevent dangling links
         for (auto& entry : adjacencyList_) {
             auto& neighbors = entry.second;
             neighbors.erase(
@@ -132,114 +138,145 @@ public:
             );
         }
 
-        std::cout << "[Success] Router '" << id << "' and all its connections removed.\n";
-        return true;
+        return {true, "Router '" + id + "' and all associated connections removed."};
     }
 
     // Connect two routers with an undirected weighted link
-    bool connectRouters(const std::string& sourceId, const std::string& destId, int weight) {
+    OperationResult connectRouters(const std::string& sourceId, const std::string& destId, int cost) {
         if (routers_.find(sourceId) == routers_.end()) {
-            std::cout << "[Error] Router '" << sourceId << "' does not exist.\n";
-            return false;
+            return {false, "Router '" + sourceId + "' does not exist."};
         }
         if (routers_.find(destId) == routers_.end()) {
-            std::cout << "[Error] Router '" << destId << "' does not exist.\n";
-            return false;
+            return {false, "Router '" + destId + "' does not exist."};
         }
         if (sourceId == destId) {
-            std::cout << "[Error] Self-links are not permitted.\n";
-            return false;
+            return {false, "Cannot connect a router to itself (self-links are not permitted)."};
         }
-        if (weight <= 0) {
-            std::cout << "[Error] Link weight must be a positive integer.\n";
-            return false;
+        if (cost <= 0) {
+            return {false, "Link cost must be a positive integer greater than zero."};
         }
 
         // Check if an existing link already exists
-        auto& srcNeighbors = adjacencyList_[sourceId];
+        const auto& srcNeighbors = adjacencyList_[sourceId];
         for (const auto& link : srcNeighbors) {
             if (link.first == destId) {
-                std::cout << "[Error] Link already exists between '" << sourceId << "' and '" << destId << "'.\n";
-                return false;
+                return {false, "Link already exists between '" + sourceId + "' and '" + destId + "'."};
             }
         }
 
-        // Add bidirectional edge
-        adjacencyList_[sourceId].push_back({destId, weight});
-        adjacencyList_[destId].push_back({sourceId, weight});
+        // Add bidirectional edge (undirected connection)
+        adjacencyList_[sourceId].push_back({destId, cost});
+        adjacencyList_[destId].push_back({sourceId, cost});
 
-        std::cout << "[Success] Connected '" << sourceId << "' <---> '" << destId 
-                  << "' with link cost " << weight << ".\n";
-        return true;
+        return {true, "Connected '" + sourceId + "' <---> '" + destId + "' with cost " + std::to_string(cost) + "."};
     }
 
     // Disconnect two routers
-    bool disconnectRouters(const std::string& sourceId, const std::string& destId) {
-        if (routers_.find(sourceId) == routers_.end() || routers_.find(destId) == routers_.end()) {
-            std::cout << "[Error] Both routers must exist to disconnect.\n";
-            return false;
+    OperationResult disconnectRouters(const std::string& sourceId, const std::string& destId) {
+        if (routers_.find(sourceId) == routers_.end()) {
+            return {false, "Router '" + sourceId + "' does not exist."};
+        }
+        if (routers_.find(destId) == routers_.end()) {
+            return {false, "Router '" + destId + "' does not exist."};
         }
 
-        auto removeLink = [](std::vector<std::pair<std::string, int>>& neighbors, const std::string& target) {
-            auto it = std::remove_if(neighbors.begin(), neighbors.end(),
-                                     [&target](const std::pair<std::string, int>& link) {
-                                         return link.first == target;
-                                     });
-            bool found = (it != neighbors.end());
-            neighbors.erase(it, neighbors.end());
-            return found;
-        };
+        auto& srcNeighbors = adjacencyList_[sourceId];
+        auto itSrc = std::find_if(srcNeighbors.begin(), srcNeighbors.end(),
+                                  [&destId](const std::pair<std::string, int>& link) {
+                                      return link.first == destId;
+                                  });
 
-        bool removedForward = removeLink(adjacencyList_[sourceId], destId);
-        bool removedReverse = removeLink(adjacencyList_[destId], sourceId);
-
-        if (!removedForward && !removedReverse) {
-            std::cout << "[Error] No direct link exists between '" << sourceId << "' and '" << destId << "'.\n";
-            return false;
+        if (itSrc == srcNeighbors.end()) {
+            return {false, "No direct link exists between '" + sourceId + "' and '" + destId + "'."};
         }
 
-        std::cout << "[Success] Disconnected '" << sourceId << "' and '" << destId << "'.\n";
-        return true;
+        srcNeighbors.erase(itSrc);
+
+        auto& dstNeighbors = adjacencyList_[destId];
+        auto itDst = std::find_if(dstNeighbors.begin(), dstNeighbors.end(),
+                                  [&sourceId](const std::pair<std::string, int>& link) {
+                                      return link.first == sourceId;
+                                  });
+        if (itDst != dstNeighbors.end()) {
+            dstNeighbors.erase(itDst);
+        }
+
+        return {true, "Disconnected '" + sourceId + "' and '" + destId + "'."};
     }
 
-    // Display the network topology as an adjacency list
-    void displayTopology() const {
-        std::cout << "\n========================================\n";
-        std::cout << "         NETWORK TOPOLOGY\n";
-        std::cout << "========================================\n";
-
-        if (routers_.empty()) {
-            std::cout << "The network is empty (no routers added yet).\n";
-            return;
-        }
-
-        for (const auto& pair : routers_) {
-            const std::string& rId = pair.first;
-            const Router& rObj = pair.second;
-
-            std::cout << "Router [" << rId << "] (" << (rObj.isActive() ? "ACTIVE" : "INACTIVE") << ") -> ";
-
-            auto it = adjacencyList_.find(rId);
-            if (it == adjacencyList_.end() || it->second.empty()) {
-                std::cout << "None";
-            } else {
-                bool first = true;
-                for (const auto& link : it->second) {
-                    if (!first) std::cout << ", ";
-                    std::cout << link.first << " (cost: " << link.second << ")";
-                    first = false;
-                }
-            }
-            std::cout << "\n";
-        }
-        std::cout << "========================================\n";
-    }
-
-    // Read-only accessors for routing calculations
+    // Check if a router exists in the network
     bool hasRouter(const std::string& id) const {
         return routers_.find(id) != routers_.end();
     }
 
+    // Safely returns a router's neighbors (empty list if router not found)
+    const std::vector<std::pair<std::string, int>>& getNeighbors(const std::string& routerId) const {
+        static const std::vector<std::pair<std::string, int>> emptyNeighbors;
+        auto it = adjacencyList_.find(routerId);
+        if (it != adjacencyList_.end()) {
+            return it->second;
+        }
+        return emptyNeighbors;
+    }
+
+    // Return the total count of routers
+    size_t getRouterCount() const {
+        return routers_.size();
+    }
+
+    // Return the total count of unique bidirectional links
+    size_t getLinkCount() const {
+        size_t totalHalfEdges = 0;
+        for (const auto& entry : adjacencyList_) {
+            totalHalfEdges += entry.second.size();
+        }
+        return totalHalfEdges / 2;
+    }
+
+    // Display the network topology sorted alphabetically
+    void displayTopology() const {
+        std::cout << "\nNETWORK TOPOLOGY\n";
+        std::cout << "----------------\n";
+
+        if (routers_.empty()) {
+            std::cout << "(Network is empty. No routers found.)\n";
+            return;
+        }
+
+        // Collect router IDs and sort them alphabetically
+        std::vector<std::string> sortedIds;
+        sortedIds.reserve(routers_.size());
+        for (const auto& pair : routers_) {
+            sortedIds.push_back(pair.first);
+        }
+        std::sort(sortedIds.begin(), sortedIds.end());
+
+        for (const auto& rId : sortedIds) {
+            std::cout << "Router " << rId << ": ";
+
+            auto it = adjacencyList_.find(rId);
+            if (it == adjacencyList_.end() || it->second.empty()) {
+                std::cout << "(No connections)";
+            } else {
+                // Copy and sort neighbors by neighbor router ID alphabetically
+                auto neighbors = it->second;
+                std::sort(neighbors.begin(), neighbors.end(),
+                          [](const auto& a, const auto& b) {
+                              return a.first < b.first;
+                          });
+
+                for (size_t i = 0; i < neighbors.size(); ++i) {
+                    if (i > 0) {
+                        std::cout << ", ";
+                    }
+                    std::cout << neighbors[i].first << " (Cost: " << neighbors[i].second << ")";
+                }
+            }
+            std::cout << "\n";
+        }
+    }
+
+    // Read-only accessors
     const std::unordered_map<std::string, Router>& getRouters() const {
         return routers_;
     }
@@ -386,6 +423,10 @@ static std::string readString(const std::string& prompt) {
     while (true) {
         std::cout << prompt;
         if (!std::getline(std::cin, input)) {
+            if (std::cin.eof()) {
+                return "";
+            }
+            std::cin.clear();
             return "";
         }
         // Trim leading and trailing whitespace
@@ -405,6 +446,9 @@ static std::string readString(const std::string& prompt) {
 static int readInteger(const std::string& prompt) {
     while (true) {
         std::string raw = readString(prompt);
+        if (raw.empty() && std::cin.eof()) {
+            return 0; // Graceful fallback on input stream closure
+        }
         try {
             size_t idx = 0;
             int value = std::stoi(raw, &idx);
@@ -437,26 +481,46 @@ private:
     PacketSimulator packetSimulator_;
 
     void handleAddRouter() {
-        std::string id = readString("Enter router ID (e.g., R1): ");
-        network_.addRouter(id);
+        std::string id = readString("Enter router ID: ");
+        OperationResult result = network_.addRouter(id);
+        if (result.success) {
+            std::cout << "[Success] " << result.message << "\n";
+        } else {
+            std::cout << "[Error] " << result.message << "\n";
+        }
     }
 
     void handleRemoveRouter() {
         std::string id = readString("Enter router ID to remove: ");
-        network_.removeRouter(id);
+        OperationResult result = network_.removeRouter(id);
+        if (result.success) {
+            std::cout << "[Success] " << result.message << "\n";
+        } else {
+            std::cout << "[Error] " << result.message << "\n";
+        }
     }
 
     void handleConnectRouters() {
         std::string src = readString("Enter first router ID: ");
         std::string dst = readString("Enter second router ID: ");
-        int weight = readInteger("Enter link weight/cost (positive integer): ");
-        network_.connectRouters(src, dst, weight);
+        int cost = readInteger("Enter link cost: ");
+        OperationResult result = network_.connectRouters(src, dst, cost);
+        if (result.success) {
+            std::cout << "[Success] " << result.message << "\n";
+        } else {
+            std::cout << "[Error] " << result.message << "\n";
+        }
     }
 
     void handleDisconnectRouters() {
         std::string src = readString("Enter first router ID: ");
         std::string dst = readString("Enter second router ID: ");
-        network_.disconnectRouters(src, dst);
+        OperationResult result = network_.disconnectRouters(src, dst);
+        if (result.success) {
+            std::cout << "[Success] " << result.message << "\n";
+        } else {
+            std::cout << "[Error] " << result.message << "\n";
+        }
     }
 
     void handleDisplayTopology() const {
