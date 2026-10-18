@@ -108,6 +108,24 @@ bool Network::hasRouter(const std::string& id) const {
     return routers_.find(id) != routers_.end();
 }
 
+bool Network::isRouterActive(const std::string& id) const {
+    auto it = routers_.find(id);
+    if (it != routers_.end()) {
+        return it->second.isActive();
+    }
+    return false;
+}
+
+OperationResult Network::setRouterActive(const std::string& id, bool active) {
+    auto it = routers_.find(id);
+    if (it == routers_.end()) {
+        return {false, "Router '" + id + "' does not exist."};
+    }
+    it->second.setActive(active);
+    std::string stateStr = active ? "ACTIVE" : "INACTIVE";
+    return {true, "Router '" + id + "' is now " + stateStr + "."};
+}
+
 const std::vector<std::pair<std::string, int>>& Network::getNeighbors(const std::string& routerId) const {
     static const std::vector<std::pair<std::string, int>> emptyNeighbors;
     auto it = adjacencyList_.find(routerId);
@@ -147,7 +165,10 @@ void Network::displayTopology() const {
     std::sort(sortedIds.begin(), sortedIds.end());
 
     for (const auto& rId : sortedIds) {
-        std::cout << "Router " << rId << ": ";
+        auto rIt = routers_.find(rId);
+        bool active = (rIt != routers_.end()) && rIt->second.isActive();
+
+        std::cout << "Router " << rId << (active ? "" : " [INACTIVE]") << ": ";
 
         auto it = adjacencyList_.find(rId);
         if (it == adjacencyList_.end() || it->second.empty()) {
@@ -169,6 +190,23 @@ void Network::displayTopology() const {
         }
         std::cout << "\n";
     }
+}
+
+OperationResult Network::loadDemonstrationNetwork() {
+    // Adds routers A, B, C, D and connections as specified in Prompt 3:
+    // A-B: 4, A-C: 2, C-B: 1, B-D: 3, C-D: 7
+    addRouter("A");
+    addRouter("B");
+    addRouter("C");
+    addRouter("D");
+
+    connectRouters("A", "B", 4);
+    connectRouters("A", "C", 2);
+    connectRouters("C", "B", 1);
+    connectRouters("B", "D", 3);
+    connectRouters("C", "D", 7);
+
+    return {true, "Demonstration network successfully loaded (Routers: A, B, C, D)."};
 }
 
 const std::unordered_map<std::string, Router>& Network::getRouters() const {

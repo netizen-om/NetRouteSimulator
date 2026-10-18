@@ -9,9 +9,11 @@
 #define PROJECT_DECLARATIONS_CPP
 
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <queue>
 #include <algorithm>
 #include <limits>
 #include <utility>
@@ -48,10 +50,10 @@ struct OperationResult {
  * Contains path availability, sequence of router IDs, total link cost, and hop count.
  */
 struct RouteResult {
-    bool exists = false;
+    bool found = false;
     std::vector<std::string> path;
-    int totalCost = 0;
-    int hopCount = 0;
+    long long totalCost = 0;
+    int hops = 0;
 };
 
 // ============================================================================
@@ -101,12 +103,16 @@ public:
     OperationResult disconnectRouters(const std::string& sourceId, const std::string& destId);
 
     bool hasRouter(const std::string& id) const;
+    bool isRouterActive(const std::string& id) const;
+    OperationResult setRouterActive(const std::string& id, bool active);
+
     const std::vector<std::pair<std::string, int>>& getNeighbors(const std::string& routerId) const;
 
     size_t getRouterCount() const;
     size_t getLinkCount() const;
 
     void displayTopology() const;
+    OperationResult loadDemonstrationNetwork();
 
     const std::unordered_map<std::string, Router>& getRouters() const;
     const std::unordered_map<std::string, std::vector<std::pair<std::string, int>>>& getAdjacencyList() const;
@@ -114,16 +120,15 @@ public:
 
 /**
  * @class RoutingEngine
- * @brief Computes shortest paths and routing tables.
+ * @brief Computes shortest paths using Dijkstra's algorithm and generates routing tables.
  * 
  * Single Responsibility:
- * Encapsulates pathfinding algorithms (e.g. Dijkstra) without polluting
- * network storage or packet logic.
+ * Encapsulates pathfinding algorithms without polluting network storage or packet logic.
  */
 class RoutingEngine {
 public:
-    RouteResult findShortestPath(const Network& network, const std::string& source, const std::string& destination);
-    void displayRoutingTable(const Network& network) const;
+    RouteResult findShortestRoute(const Network& network, const std::string& source, const std::string& destination);
+    void displayRoutingTable(const Network& network, const std::string& source) const;
 };
 
 /**
@@ -199,7 +204,9 @@ private:
     void handleDisplayRoutingTable() const;
     void handleSendPacket();
     void handleDisplayPacketHistory() const;
-    void handleDisplayStatistics() const;
+    void handleDisplayStatistics();
+    void handleSetRouterActive();
+    void handleLoadDemonstrationNetwork();
     void printMenu() const;
 
 public:

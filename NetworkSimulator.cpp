@@ -111,11 +111,54 @@ void NetworkSimulator::handleDisplayTopology() const {
 void NetworkSimulator::handleFindShortestRoute() {
     std::string src = readString("Enter source router ID: ");
     std::string dst = readString("Enter destination router ID: ");
-    routingEngine_.findShortestPath(network_, src, dst);
+
+    if (!network_.hasRouter(src)) {
+        std::cout << "[Error] Source router '" << src << "' does not exist in the network.\n";
+        return;
+    }
+    if (!network_.hasRouter(dst)) {
+        std::cout << "[Error] Destination router '" << dst << "' does not exist in the network.\n";
+        return;
+    }
+    if (!network_.isRouterActive(src)) {
+        std::cout << "[Error] Source router '" << src << "' is currently INACTIVE.\n";
+        return;
+    }
+    if (!network_.isRouterActive(dst)) {
+        std::cout << "[Error] Destination router '" << dst << "' is currently INACTIVE.\n";
+        return;
+    }
+
+    RouteResult result = routingEngine_.findShortestRoute(network_, src, dst);
+
+    std::cout << "\n========================================\n"
+              << "         SHORTEST ROUTE\n"
+              << "========================================\n"
+              << "Source Router: " << src << "\n"
+              << "Destination Router: " << dst << "\n\n";
+
+    if (result.found) {
+        std::cout << "Shortest Route: ";
+        for (size_t i = 0; i < result.path.size(); ++i) {
+            if (i > 0) std::cout << " -> ";
+            std::cout << result.path[i];
+        }
+        std::cout << "\n"
+                  << "Total Cost: " << result.totalCost << "\n"
+                  << "Number of Hops: " << result.hops << "\n"
+                  << "Status: Route Found\n";
+    } else {
+        std::cout << "Shortest Route: None\n"
+                  << "Total Cost: 0\n"
+                  << "Number of Hops: 0\n"
+                  << "Status: Destination Unreachable\n";
+    }
+    std::cout << "========================================\n";
 }
 
 void NetworkSimulator::handleDisplayRoutingTable() const {
-    routingEngine_.displayRoutingTable(network_);
+    std::string src = readString("Enter source router ID for routing table: ");
+    routingEngine_.displayRoutingTable(network_, src);
 }
 
 void NetworkSimulator::handleSendPacket() {
@@ -136,8 +179,24 @@ void NetworkSimulator::handleDisplayPacketHistory() const {
     packetSimulator_.displayHistory();
 }
 
-void NetworkSimulator::handleDisplayStatistics() const {
+void NetworkSimulator::handleDisplayStatistics() {
     packetSimulator_.displayStatistics();
+}
+
+void NetworkSimulator::handleSetRouterActive() {
+    std::string id = readString("Enter router ID: ");
+    int choice = readInteger("Set state (1 = Active, 0 = Inactive): ");
+    OperationResult res = network_.setRouterActive(id, choice != 0);
+    if (res.success) {
+        std::cout << "[Success] " << res.message << "\n";
+    } else {
+        std::cout << "[Error] " << res.message << "\n";
+    }
+}
+
+void NetworkSimulator::handleLoadDemonstrationNetwork() {
+    OperationResult res = network_.loadDemonstrationNetwork();
+    std::cout << "[Success] " << res.message << "\n";
 }
 
 void NetworkSimulator::printMenu() const {
@@ -154,6 +213,8 @@ void NetworkSimulator::printMenu() const {
               << "8. Send Packet\n"
               << "9. Display Packet History\n"
               << "10. Display Network Statistics\n"
+              << "11. Set Router Active/Inactive\n"
+              << "12. Load Demonstration Network\n"
               << "0. Exit\n"
               << "Enter choice: ";
 }
@@ -175,12 +236,14 @@ void NetworkSimulator::run() {
             case 8:  handleSendPacket(); break;
             case 9:  handleDisplayPacketHistory(); break;
             case 10: handleDisplayStatistics(); break;
+            case 11: handleSetRouterActive(); break;
+            case 12: handleLoadDemonstrationNetwork(); break;
             case 0:
                 std::cout << "Exiting NetRoute Simulator. Goodbye!\n";
                 running = false;
                 break;
             default:
-                std::cout << "[Warning] Invalid choice. Please select an option between 0 and 10.\n";
+                std::cout << "[Warning] Invalid choice. Please select an option between 0 and 12.\n";
                 break;
         }
     }
