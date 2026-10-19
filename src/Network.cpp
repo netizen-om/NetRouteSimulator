@@ -1,10 +1,7 @@
-// ============================================================================
-// File: Network.cpp
-// Description: Implementation of Network class methods for topology management,
-//              validation, connection handling, and adjacency listing.
-// ============================================================================
+#include "Network.h"
 
-#include "ProjectDeclarations.cpp"
+#include <iostream>
+#include <algorithm>
 
 OperationResult Network::addRouter(const std::string& id) {
     if (id.empty()) {
@@ -193,7 +190,7 @@ void Network::displayTopology() const {
 }
 
 OperationResult Network::loadDemonstrationNetwork() {
-    // Adds routers A, B, C, D and connections as specified in Prompt 3:
+    // Adds routers A, B, C, D and connections as specified:
     // A-B: 4, A-C: 2, C-B: 1, B-D: 3, C-D: 7
     addRouter("A");
     addRouter("B");

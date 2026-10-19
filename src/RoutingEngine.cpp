@@ -1,11 +1,13 @@
-// ============================================================================
-// File: RoutingEngine.cpp
-// Description: Implementation of RoutingEngine class methods.
-//              Provides Dijkstra's shortest-path algorithm and single-source
-//              routing table generation.
-// ============================================================================
+#include "RoutingEngine.h"
+#include "Network.h"
 
-#include "ProjectDeclarations.cpp"
+#include <iostream>
+#include <iomanip>
+#include <unordered_map>
+#include <queue>
+#include <limits>
+#include <algorithm>
+#include <utility>
 
 RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::string& source, const std::string& destination) {
     RouteResult result;
@@ -15,7 +17,7 @@ RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::
         return result; // found = false, path empty, cost = 0, hops = 0
     }
 
-    // 4. Validate active state (inactive routers cannot act as source or destination)
+    // 2. Validate active state (inactive routers cannot act as source or destination)
     if (!network.isRouterActive(source) || !network.isRouterActive(destination)) {
         return result;
     }
@@ -29,7 +31,7 @@ RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::
         return result;
     }
 
-    // 2. Initialize distances to infinity
+    // 3. Initialize distances to infinity
     const long long INF = std::numeric_limits<long long>::max();
     std::unordered_map<std::string, long long> dist;
     std::unordered_map<std::string, std::string> predecessor;
@@ -38,30 +40,30 @@ RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::
         dist[pair.first] = INF;
     }
 
-    // 3. Set source distance to zero
+    // 4. Set source distance to zero
     dist[source] = 0;
 
-    // 4. Min-priority queue: pair of (distance, router ID)
+    // 5. Min-priority queue: pair of (distance, router ID)
     using DistPair = std::pair<long long, std::string>;
     std::priority_queue<DistPair, std::vector<DistPair>, std::greater<DistPair>> pq;
     pq.push({0, source});
 
-    // 5. Repeatedly extract the router with the smallest tentative distance
+    // 6. Repeatedly extract the router with the smallest tentative distance
     while (!pq.empty()) {
         auto [currentDist, u] = pq.top();
         pq.pop();
 
-        // 6. Ignore stale priority-queue entries
+        // 7. Ignore stale priority-queue entries
         if (currentDist > dist[u]) {
             continue;
         }
 
-        // 9. Early-exit optimization once destination is finalized
+        // 8. Early-exit optimization once destination is finalized
         if (u == destination) {
             break;
         }
 
-        // 7. Relax each valid neighboring edge
+        // 9. Relax each valid neighboring edge
         const auto& neighbors = network.getNeighbors(u);
         for (const auto& edge : neighbors) {
             const std::string& v = edge.first;
@@ -75,7 +77,7 @@ RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::
             long long newDist = currentDist + weight;
             if (newDist < dist[v]) {
                 dist[v] = newDist;
-                predecessor[v] = u; // 8. Update predecessor
+                predecessor[v] = u; // 10. Update predecessor
                 pq.push({newDist, v});
             }
         }
@@ -90,24 +92,23 @@ RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::
         return result;
     }
 
-    // 10. Reconstruct the path by walking backward through predecessors
+    // 11. Reconstruct the path by walking backward through predecessors
     std::vector<std::string> reconstructedPath;
     std::string curr = destination;
     while (curr != source) {
         reconstructedPath.push_back(curr);
         auto it = predecessor.find(curr);
         if (it == predecessor.end()) {
-            // Unreachable safeguard
-            return result;
+            return result; // Unreachable safeguard
         }
         curr = it->second;
     }
     reconstructedPath.push_back(source);
 
-    // 11. Reverse to obtain source-to-destination order
+    // 12. Reverse to obtain source-to-destination order
     std::reverse(reconstructedPath.begin(), reconstructedPath.end());
 
-    // 12. Hop count is the number of edges (hops = vertices - 1)
+    // 13. Hop count is the number of edges (hops = vertices - 1)
     result.found = true;
     result.path = reconstructedPath;
     result.totalCost = dist[destination];

@@ -1,9 +1,4 @@
-// ============================================================================
-// File: Packet.cpp
-// Description: Implementation of Packet class methods and status conversions.
-// ============================================================================
-
-#include "ProjectDeclarations.cpp"
+#include "Packet.h"
 
 std::string packetStatusToString(PacketStatus status) {
     return Packet::statusToString(status);
@@ -71,9 +66,9 @@ void Packet::setFailureReason(const std::string& reason) {
 std::string Packet::statusToString(PacketStatus status) {
     switch (status) {
         case PacketStatus::CREATED:    return "CREATED";
-        case PacketStatus::IN_TRANSIT:  return "IN_TRANSIT";
-        case PacketStatus::DELIVERED:   return "DELIVERED";
-        case PacketStatus::FAILED:      return "FAILED";
+        case PacketStatus::IN_TRANSIT: return "IN_TRANSIT";
+        case PacketStatus::DELIVERED:  return "DELIVERED";
+        case PacketStatus::FAILED:     return "FAILED";
     }
     return "UNKNOWN";
 }

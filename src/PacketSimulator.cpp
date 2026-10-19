@@ -1,23 +1,21 @@
-// ============================================================================
-// File: PacketSimulator.cpp
-// Description: Implementation of PacketSimulator class methods.
-//              Handles packet lifecycle, forwarding simulation, history,
-//              and delivery metrics.
-// ============================================================================
+#include "PacketSimulator.h"
+#include "Network.h"
+#include "RoutingEngine.h"
 
-#include "ProjectDeclarations.cpp"
+#include <iostream>
+#include <iomanip>
 
 void PacketSimulator::sendPacket(const std::string& source, const std::string& destination,
                                  const Network& network, RoutingEngine& engine) {
-    // 3. Create packet with unique monotonically increasing ID
+    // 1. Create packet with unique monotonically increasing ID
     int id = nextPacketId_++;
     Packet packet(id, source, destination);
     packetsCreated_++;
 
-    // 4. Ask RoutingEngine for the shortest route
+    // 2. Ask RoutingEngine for the shortest route
     RouteResult route = engine.findShortestRoute(network, source, destination);
 
-    // 5. If no route exists, mark FAILED and store in history
+    // 3. If no route exists, mark FAILED and store in history
     if (!route.found) {
         packet.setStatus(PacketStatus::FAILED);
         packet.setFailureReason("No route available");
@@ -36,7 +34,7 @@ void PacketSimulator::sendPacket(const std::string& source, const std::string& d
         return;
     }
 
-    // 6. Route exists: set status to IN_TRANSIT
+    // 4. Route exists: set status to IN_TRANSIT
     packet.setStatus(PacketStatus::IN_TRANSIT);
 
     std::cout << "\n========================================\n"
@@ -47,9 +45,8 @@ void PacketSimulator::sendPacket(const std::string& source, const std::string& d
               << "Destination: " << packet.getDestination() << "\n\n"
               << "Forwarding:\n";
 
-    // 7. Simulate hop-by-hop forwarding & 8. Record each visited router
+    // 5. Simulate hop-by-hop forwarding and record each visited router
     if (route.path.size() == 1) {
-        // Special case: source == destination
         std::cout << route.path[0] << " (Local delivery)\n";
         packet.recordHop(route.path[0]);
     } else {
@@ -60,16 +57,16 @@ void PacketSimulator::sendPacket(const std::string& source, const std::string& d
         packet.recordHop(route.path.back());
     }
 
-    // 9. Mark packet DELIVERED and set total cost
+    // 6. Mark packet DELIVERED and set total cost
     packet.setStatus(PacketStatus::DELIVERED);
     packet.setTotalCost(route.totalCost);
     packetsDelivered_++;
     totalDeliveredHops_ += packet.getHops();
 
-    // 10. Store completed packet in history
+    // 7. Store completed packet in history
     packetHistory_.push_back(packet);
 
-    // 11. Display final result
+    // 8. Display final result
     std::cout << "\nActual Path: ";
     for (size_t i = 0; i < packet.getPath().size(); ++i) {
         if (i > 0) std::cout << " -> ";
