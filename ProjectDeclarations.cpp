@@ -26,11 +26,16 @@
  * @brief Represents the lifecycle states of a network packet.
  */
 enum class PacketStatus {
-    Created,
-    InTransit,
-    Delivered,
-    Dropped
+    CREATED,
+    IN_TRANSIT,
+    DELIVERED,
+    FAILED
 };
+
+/**
+ * @brief Helper function to convert PacketStatus enum to string.
+ */
+std::string packetStatusToString(PacketStatus status);
 
 // ============================================================================
 // SECTION 2: DATA STRUCTURES
@@ -136,49 +141,59 @@ public:
  * @brief Represents a single data packet travelling across the network.
  * 
  * Single Responsibility:
- * Holds packet metadata (id, source, destination, hop path, current status).
+ * Holds packet metadata (id, source, destination, hop path, current status, cost).
  */
 class Packet {
 private:
-    std::string id_;
+    int id_;
     std::string source_;
     std::string destination_;
     std::vector<std::string> path_;
     PacketStatus status_;
+    long long totalCost_;
+    std::string failureReason_;
 
 public:
-    Packet(const std::string& id, const std::string& source, const std::string& destination);
+    Packet(int id, const std::string& source, const std::string& destination);
 
-    const std::string& getId() const;
+    int getId() const;
     const std::string& getSource() const;
     const std::string& getDestination() const;
     const std::vector<std::string>& getPath() const;
     PacketStatus getStatus() const;
+    long long getTotalCost() const;
+    int getHops() const;
+    const std::string& getFailureReason() const;
 
+    void recordHop(const std::string& routerId);
     void setPath(const std::vector<std::string>& path);
     void setStatus(PacketStatus status);
+    void setTotalCost(long long cost);
+    void setFailureReason(const std::string& reason);
 
     static std::string statusToString(PacketStatus status);
 };
 
 /**
  * @class PacketSimulator
- * @brief Manages packet forwarding, delivery histories, and network stats.
+ * @brief Manages packet creation, forwarding simulation, history, and delivery stats.
  * 
  * Single Responsibility:
- * Handles packet transmission simulation, tracking history and delivery metrics.
+ * Handles logical packet transmission simulation, tracking history and metrics.
  */
 class PacketSimulator {
 private:
+    int nextPacketId_ = 1001;
     std::vector<Packet> packetHistory_;
     int packetsCreated_ = 0;
     int packetsDelivered_ = 0;
-    int packetsDropped_ = 0;
+    int packetsFailed_ = 0;
+    long long totalDeliveredHops_ = 0;
 
 public:
-    void sendPacket(Packet packet, const Network& network, RoutingEngine& engine);
+    void sendPacket(const std::string& source, const std::string& destination, const Network& network, RoutingEngine& engine);
     void displayHistory() const;
-    void displayStatistics() const;
+    void displayStatistics(const Network& network) const;
 };
 
 /**
@@ -204,7 +219,7 @@ private:
     void handleDisplayRoutingTable() const;
     void handleSendPacket();
     void handleDisplayPacketHistory() const;
-    void handleDisplayStatistics();
+    void handleDisplayStatistics() const;
     void handleSetRouterActive();
     void handleLoadDemonstrationNetwork();
     void printMenu() const;

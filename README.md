@@ -13,8 +13,8 @@ NetRouteSimulator/
 ├── Router.cpp              # Implementation of Router state and accessors
 ├── Network.cpp             # Implementation of Network topology, links, and adjacency lists
 ├── RoutingEngine.cpp       # Implementation of Dijkstra shortest-path algorithm and routing tables
-├── Packet.cpp              # Implementation of Packet data and status conversion
-├── PacketSimulator.cpp     # Implementation of PacketSimulator (history and statistics)
+├── Packet.cpp              # Implementation of Packet data, getters/setters, and status conversion
+├── PacketSimulator.cpp     # Implementation of PacketSimulator (packet forwarding, history, statistics)
 ├── NetworkSimulator.cpp    # Implementation of NetworkSimulator (CLI menu and input validation)
 └── README.md               # Project documentation and build instructions
 ```
@@ -45,5 +45,12 @@ Run the compiled executable:
 - **Topology Display:** Displays network nodes and connections sorted alphabetically with active/inactive indicators.
 - **Dijkstra Shortest-Path Routing:** Computes the lowest-cost path between routers using a min-priority queue and predecessor tracing.
 - **Single-Source Routing Table:** Generates next-hop forwarding tables for any source node in a single Dijkstra traversal.
+- **Packet Lifecycle Simulation:**
+  - Auto-generated unique IDs starting at `1001`.
+  - States: `CREATED`, `IN_TRANSIT`, `DELIVERED`, and `FAILED`.
+  - Hop-by-hop forwarding visualization and visited path tracking.
+  - Graceful handling of unreachable destinations and inactive routers.
+- **Packet History:** Maintains a chronological record of all delivered and failed packet transmissions.
+- **Network Statistics:** Computes router counts, unique link counts, packet creation totals, delivery success percentages, and average hop counts with division-by-zero protection.
 - **Sample Demonstration Network:** Option 12 sets up the standard 4-node benchmark topology (A, B, C, D) showcasing cost vs. hop optimization.
 - **Safe Input Processing:** Guards against empty strings, non-numeric values, and EOF conditions without crashing.

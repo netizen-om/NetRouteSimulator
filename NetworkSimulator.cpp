@@ -162,25 +162,35 @@ void NetworkSimulator::handleDisplayRoutingTable() const {
 }
 
 void NetworkSimulator::handleSendPacket() {
-    std::string pid = readString("Enter packet ID (e.g., PKT-101): ");
     std::string src = readString("Enter source router ID: ");
     std::string dst = readString("Enter destination router ID: ");
 
-    if (!network_.hasRouter(src) || !network_.hasRouter(dst)) {
-        std::cout << "[Error] Both source and destination routers must exist in the network.\n";
+    if (!network_.hasRouter(src)) {
+        std::cout << "[Error] Source router '" << src << "' does not exist in the network.\n";
+        return;
+    }
+    if (!network_.hasRouter(dst)) {
+        std::cout << "[Error] Destination router '" << dst << "' does not exist in the network.\n";
+        return;
+    }
+    if (!network_.isRouterActive(src)) {
+        std::cout << "[Error] Source router '" << src << "' is currently INACTIVE.\n";
+        return;
+    }
+    if (!network_.isRouterActive(dst)) {
+        std::cout << "[Error] Destination router '" << dst << "' is currently INACTIVE.\n";
         return;
     }
 
-    Packet pkt(pid, src, dst);
-    packetSimulator_.sendPacket(pkt, network_, routingEngine_);
+    packetSimulator_.sendPacket(src, dst, network_, routingEngine_);
 }
 
 void NetworkSimulator::handleDisplayPacketHistory() const {
     packetSimulator_.displayHistory();
 }
 
-void NetworkSimulator::handleDisplayStatistics() {
-    packetSimulator_.displayStatistics();
+void NetworkSimulator::handleDisplayStatistics() const {
+    packetSimulator_.displayStatistics(network_);
 }
 
 void NetworkSimulator::handleSetRouterActive() {
