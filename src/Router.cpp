@@ -1,9 +1,13 @@
 #include "Router.h"
 
-Router::Router(const std::string& id)
-    : id_(id), active_(true) {}
+using namespace std;
 
-const std::string& Router::getId() const {
+Router::Router(string id) {
+    id_ = id;
+    active_ = true;
+}
+
+string Router::getId() const {
     return id_;
 }
 

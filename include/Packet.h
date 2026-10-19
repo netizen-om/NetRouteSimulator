@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-/**
- * @brief Represents the lifecycle states of a network packet.
- */
+using namespace std;
+
+// States of a packet during its lifecycle
 enum class PacketStatus {
     CREATED,
     IN_TRANSIT,
@@ -14,47 +14,38 @@ enum class PacketStatus {
     FAILED
 };
 
-/**
- * @brief Helper function to convert PacketStatus enum to string.
- */
-std::string packetStatusToString(PacketStatus status);
+string packetStatusToString(PacketStatus status);
 
-/**
- * @class Packet
- * @brief Represents a single data packet travelling across the network.
- * 
- * Single Responsibility:
- * Holds packet metadata (id, source, destination, hop path, current status, cost).
- */
+// Represents a data packet in the simulated network
 class Packet {
 private:
     int id_;
-    std::string source_;
-    std::string destination_;
-    std::vector<std::string> path_;
+    string source_;
+    string destination_;
+    vector<string> path_;
     PacketStatus status_;
     long long totalCost_;
-    std::string failureReason_;
+    string failureReason_;
 
 public:
-    Packet(int id, const std::string& source, const std::string& destination);
+    Packet(int id, string source, string destination);
 
     int getId() const;
-    const std::string& getSource() const;
-    const std::string& getDestination() const;
-    const std::vector<std::string>& getPath() const;
+    string getSource() const;
+    string getDestination() const;
+    const vector<string>& getPath() const;
     PacketStatus getStatus() const;
     long long getTotalCost() const;
     int getHops() const;
-    const std::string& getFailureReason() const;
+    string getFailureReason() const;
 
-    void recordHop(const std::string& routerId);
-    void setPath(const std::vector<std::string>& path);
+    void recordHop(string routerId);
+    void setPath(const vector<string>& path);
     void setStatus(PacketStatus status);
     void setTotalCost(long long cost);
-    void setFailureReason(const std::string& reason);
+    void setFailureReason(string reason);
 
-    static std::string statusToString(PacketStatus status);
+    static string statusToString(PacketStatus status);
 };
 
 #endif // PACKET_H

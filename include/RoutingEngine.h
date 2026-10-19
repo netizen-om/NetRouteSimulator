@@ -4,31 +4,24 @@
 #include <string>
 #include <vector>
 
-// Forward declaration of Network to prevent tight header coupling
+using namespace std;
+
+// Forward declaration of Network to avoid tight coupling
 class Network;
 
-/**
- * @brief Represents the outcome of a route discovery query.
- * Contains path availability, sequence of router IDs, total link cost, and hop count.
- */
+// Stores the outcome of a shortest-path calculation
 struct RouteResult {
     bool found = false;
-    std::vector<std::string> path;
+    vector<string> path;
     long long totalCost = 0;
     int hops = 0;
 };
 
-/**
- * @class RoutingEngine
- * @brief Computes shortest paths using Dijkstra's algorithm and generates routing tables.
- * 
- * Single Responsibility:
- * Encapsulates pathfinding algorithms without polluting network storage or packet logic.
- */
+// Calculates shortest paths using Dijkstra's algorithm
 class RoutingEngine {
 public:
-    RouteResult findShortestRoute(const Network& network, const std::string& source, const std::string& destination);
-    void displayRoutingTable(const Network& network, const std::string& source) const;
+    RouteResult findShortestRoute(const Network& network, string source, string destination);
+    void displayRoutingTable(const Network& network, string source) const;
 };
 
 #endif // ROUTING_ENGINE_H

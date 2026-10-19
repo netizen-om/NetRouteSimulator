@@ -3,101 +3,68 @@
 #include <iostream>
 #include <string>
 
-// ----------------------------------------------------------------------------
-// Local Input Helper Functions
-// ----------------------------------------------------------------------------
-
-/**
- * @brief Safely reads a non-empty string line from standard input.
- */
-static std::string readString(const std::string& prompt) {
-    std::string input;
-    while (true) {
-        std::cout << prompt;
-        if (!std::getline(std::cin, input)) {
-            if (std::cin.eof()) {
-                return "";
-            }
-            std::cin.clear();
-            return "";
-        }
-        // Trim leading and trailing whitespace
-        size_t start = input.find_first_not_of(" \t\r\n");
-        if (start == std::string::npos) {
-            std::cout << "[Warning] Input cannot be blank. Please try again.\n";
-            continue;
-        }
-        size_t end = input.find_last_not_of(" \t\r\n");
-        return input.substr(start, end - start + 1);
-    }
-}
-
-/**
- * @brief Safely reads an integer from standard input with validation.
- */
-static int readInteger(const std::string& prompt) {
-    while (true) {
-        std::string raw = readString(prompt);
-        if (raw.empty() && std::cin.eof()) {
-            return 0; // Graceful fallback on input stream closure
-        }
-        try {
-            size_t idx = 0;
-            int value = std::stoi(raw, &idx);
-            if (idx == raw.length()) {
-                return value;
-            }
-        } catch (...) {
-            // Conversion failed
-        }
-        std::cout << "[Warning] Invalid number. Please enter a valid integer.\n";
-    }
-}
+using namespace std;
 
 // ----------------------------------------------------------------------------
 // NetworkSimulator Member Implementations
 // ----------------------------------------------------------------------------
 
 void NetworkSimulator::handleAddRouter() {
-    std::string id = readString("Enter router ID: ");
+    string id;
+    cout << "Enter router ID: ";
+    cin >> id;
+
     OperationResult result = network_.addRouter(id);
     if (result.success) {
-        std::cout << "[Success] " << result.message << "\n";
+        cout << "[Success] " << result.message << "\n";
     } else {
-        std::cout << "[Error] " << result.message << "\n";
+        cout << "[Error] " << result.message << "\n";
     }
 }
 
 void NetworkSimulator::handleRemoveRouter() {
-    std::string id = readString("Enter router ID to remove: ");
+    string id;
+    cout << "Enter router ID to remove: ";
+    cin >> id;
+
     OperationResult result = network_.removeRouter(id);
     if (result.success) {
-        std::cout << "[Success] " << result.message << "\n";
+        cout << "[Success] " << result.message << "\n";
     } else {
-        std::cout << "[Error] " << result.message << "\n";
+        cout << "[Error] " << result.message << "\n";
     }
 }
 
 void NetworkSimulator::handleConnectRouters() {
-    std::string src = readString("Enter first router ID: ");
-    std::string dst = readString("Enter second router ID: ");
-    int cost = readInteger("Enter link cost: ");
+    string src, dst;
+    int cost;
+    cout << "Enter first router ID: ";
+    cin >> src;
+    cout << "Enter second router ID: ";
+    cin >> dst;
+    cout << "Enter link cost: ";
+    cin >> cost;
+
     OperationResult result = network_.connectRouters(src, dst, cost);
     if (result.success) {
-        std::cout << "[Success] " << result.message << "\n";
+        cout << "[Success] " << result.message << "\n";
     } else {
-        std::cout << "[Error] " << result.message << "\n";
+        cout << "[Error] " << result.message << "\n";
     }
 }
 
 void NetworkSimulator::handleDisconnectRouters() {
-    std::string src = readString("Enter first router ID: ");
-    std::string dst = readString("Enter second router ID: ");
+    string src, dst;
+    cout << "Enter first router ID: ";
+    cin >> src;
+    cout << "Enter second router ID: ";
+    cin >> dst;
+
     OperationResult result = network_.disconnectRouters(src, dst);
     if (result.success) {
-        std::cout << "[Success] " << result.message << "\n";
+        cout << "[Success] " << result.message << "\n";
     } else {
-        std::cout << "[Error] " << result.message << "\n";
+        cout << "[Error] " << result.message << "\n";
     }
 }
 
@@ -106,76 +73,84 @@ void NetworkSimulator::handleDisplayTopology() const {
 }
 
 void NetworkSimulator::handleFindShortestRoute() {
-    std::string src = readString("Enter source router ID: ");
-    std::string dst = readString("Enter destination router ID: ");
+    string src, dst;
+    cout << "Enter source router ID: ";
+    cin >> src;
+    cout << "Enter destination router ID: ";
+    cin >> dst;
 
     if (!network_.hasRouter(src)) {
-        std::cout << "[Error] Source router '" << src << "' does not exist in the network.\n";
+        cout << "[Error] Source router '" << src << "' does not exist in the network.\n";
         return;
     }
     if (!network_.hasRouter(dst)) {
-        std::cout << "[Error] Destination router '" << dst << "' does not exist in the network.\n";
+        cout << "[Error] Destination router '" << dst << "' does not exist in the network.\n";
         return;
     }
     if (!network_.isRouterActive(src)) {
-        std::cout << "[Error] Source router '" << src << "' is currently INACTIVE.\n";
+        cout << "[Error] Source router '" << src << "' is currently INACTIVE.\n";
         return;
     }
     if (!network_.isRouterActive(dst)) {
-        std::cout << "[Error] Destination router '" << dst << "' is currently INACTIVE.\n";
+        cout << "[Error] Destination router '" << dst << "' is currently INACTIVE.\n";
         return;
     }
 
     RouteResult result = routingEngine_.findShortestRoute(network_, src, dst);
 
-    std::cout << "\n========================================\n"
-              << "         SHORTEST ROUTE\n"
-              << "========================================\n"
-              << "Source Router: " << src << "\n"
-              << "Destination Router: " << dst << "\n\n";
+    cout << "\n========================================\n"
+         << "         SHORTEST ROUTE\n"
+         << "========================================\n"
+         << "Source Router: " << src << "\n"
+         << "Destination Router: " << dst << "\n\n";
 
     if (result.found) {
-        std::cout << "Shortest Route: ";
+        cout << "Shortest Route: ";
         for (size_t i = 0; i < result.path.size(); ++i) {
-            if (i > 0) std::cout << " -> ";
-            std::cout << result.path[i];
+            if (i > 0) cout << " -> ";
+            cout << result.path[i];
         }
-        std::cout << "\n"
-                  << "Total Cost: " << result.totalCost << "\n"
-                  << "Number of Hops: " << result.hops << "\n"
-                  << "Status: Route Found\n";
+        cout << "\n"
+             << "Total Cost: " << result.totalCost << "\n"
+             << "Number of Hops: " << result.hops << "\n"
+             << "Status: Route Found\n";
     } else {
-        std::cout << "Shortest Route: None\n"
-                  << "Total Cost: 0\n"
-                  << "Number of Hops: 0\n"
-                  << "Status: Destination Unreachable\n";
+        cout << "Shortest Route: None\n"
+             << "Total Cost: 0\n"
+             << "Number of Hops: 0\n"
+             << "Status: Destination Unreachable\n";
     }
-    std::cout << "========================================\n";
+    cout << "========================================\n";
 }
 
 void NetworkSimulator::handleDisplayRoutingTable() const {
-    std::string src = readString("Enter source router ID for routing table: ");
+    string src;
+    cout << "Enter source router ID for routing table: ";
+    cin >> src;
     routingEngine_.displayRoutingTable(network_, src);
 }
 
 void NetworkSimulator::handleSendPacket() {
-    std::string src = readString("Enter source router ID: ");
-    std::string dst = readString("Enter destination router ID: ");
+    string src, dst;
+    cout << "Enter source router ID: ";
+    cin >> src;
+    cout << "Enter destination router ID: ";
+    cin >> dst;
 
     if (!network_.hasRouter(src)) {
-        std::cout << "[Error] Source router '" << src << "' does not exist in the network.\n";
+        cout << "[Error] Source router '" << src << "' does not exist in the network.\n";
         return;
     }
     if (!network_.hasRouter(dst)) {
-        std::cout << "[Error] Destination router '" << dst << "' does not exist in the network.\n";
+        cout << "[Error] Destination router '" << dst << "' does not exist in the network.\n";
         return;
     }
     if (!network_.isRouterActive(src)) {
-        std::cout << "[Error] Source router '" << src << "' is currently INACTIVE.\n";
+        cout << "[Error] Source router '" << src << "' is currently INACTIVE.\n";
         return;
     }
     if (!network_.isRouterActive(dst)) {
-        std::cout << "[Error] Destination router '" << dst << "' is currently INACTIVE.\n";
+        cout << "[Error] Destination router '" << dst << "' is currently INACTIVE.\n";
         return;
     }
 
@@ -191,46 +166,59 @@ void NetworkSimulator::handleDisplayStatistics() const {
 }
 
 void NetworkSimulator::handleSetRouterActive() {
-    std::string id = readString("Enter router ID: ");
-    int choice = readInteger("Set state (1 = Active, 0 = Inactive): ");
-    OperationResult res = network_.setRouterActive(id, choice != 0);
+    string id;
+    int stateChoice;
+    cout << "Enter router ID: ";
+    cin >> id;
+    cout << "Set state (1 = Active, 0 = Inactive): ";
+    cin >> stateChoice;
+
+    OperationResult res = network_.setRouterActive(id, stateChoice != 0);
     if (res.success) {
-        std::cout << "[Success] " << res.message << "\n";
+        cout << "[Success] " << res.message << "\n";
     } else {
-        std::cout << "[Error] " << res.message << "\n";
+        cout << "[Error] " << res.message << "\n";
     }
 }
 
 void NetworkSimulator::handleLoadDemonstrationNetwork() {
     OperationResult res = network_.loadDemonstrationNetwork();
-    std::cout << "[Success] " << res.message << "\n";
+    cout << "[Success] " << res.message << "\n";
 }
 
 void NetworkSimulator::printMenu() const {
-    std::cout << "\n========================================\n"
-              << "         NETROUTE SIMULATOR\n"
-              << "========================================\n"
-              << "1. Add Router\n"
-              << "2. Remove Router\n"
-              << "3. Connect Routers\n"
-              << "4. Disconnect Routers\n"
-              << "5. Display Network Topology\n"
-              << "6. Find Shortest Route\n"
-              << "7. Display Routing Table\n"
-              << "8. Send Packet\n"
-              << "9. Display Packet History\n"
-              << "10. Display Network Statistics\n"
-              << "11. Set Router Active/Inactive\n"
-              << "12. Load Demonstration Network\n"
-              << "0. Exit\n"
-              << "Enter choice: ";
+    cout << "\n========================================\n"
+         << "         NETROUTE SIMULATOR\n"
+         << "========================================\n"
+         << "1. Add Router\n"
+         << "2. Remove Router\n"
+         << "3. Connect Routers\n"
+         << "4. Disconnect Routers\n"
+         << "5. Display Network Topology\n"
+         << "6. Find Shortest Route\n"
+         << "7. Display Routing Table\n"
+         << "8. Send Packet\n"
+         << "9. Display Packet History\n"
+         << "10. Display Network Statistics\n"
+         << "11. Set Router Active/Inactive\n"
+         << "12. Load Demonstration Network\n"
+         << "0. Exit\n"
+         << "Enter choice: ";
 }
 
 void NetworkSimulator::run() {
-    bool running = true;
-    while (running) {
+    int choice = -1;
+    do {
         printMenu();
-        int choice = readInteger("");
+        cin >> choice;
+
+        if (cin.fail()) {
+            cin.clear();
+            string dummy;
+            cin >> dummy;
+            cout << "[Warning] Invalid number. Please enter a valid integer.\n";
+            continue;
+        }
 
         switch (choice) {
             case 1:  handleAddRouter(); break;
@@ -246,12 +234,11 @@ void NetworkSimulator::run() {
             case 11: handleSetRouterActive(); break;
             case 12: handleLoadDemonstrationNetwork(); break;
             case 0:
-                std::cout << "Exiting NetRoute Simulator. Goodbye!\n";
-                running = false;
+                cout << "Exiting NetRoute Simulator. Goodbye!\n";
                 break;
             default:
-                std::cout << "[Warning] Invalid choice. Please select an option between 0 and 12.\n";
+                cout << "[Warning] Invalid choice. Please select an option between 0 and 12.\n";
                 break;
         }
-    }
+    } while (choice != 0);
 }

@@ -5,14 +5,9 @@
 #include "RoutingEngine.h"
 #include "PacketSimulator.h"
 
-/**
- * @class NetworkSimulator
- * @brief Top-level coordinator that manages user interaction and routes commands.
- * 
- * Single Responsibility:
- * Coordinates the CLI menu, reads user choices, and delegates actions to
- * Network, RoutingEngine, and PacketSimulator.
- */
+using namespace std;
+
+// Controller class: manages the menu and connects user inputs to simulator logic
 class NetworkSimulator {
 private:
     Network network_;

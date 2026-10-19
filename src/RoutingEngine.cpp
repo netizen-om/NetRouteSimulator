@@ -7,17 +7,17 @@
 #include <queue>
 #include <limits>
 #include <algorithm>
-#include <utility>
 
-RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::string& source, const std::string& destination) {
+using namespace std;
+
+RouteResult RoutingEngine::findShortestRoute(const Network& network, string source, string destination) {
     RouteResult result;
 
-    // 1. Validate endpoint existence
+    // Check if source and destination exist in the network
     if (!network.hasRouter(source) || !network.hasRouter(destination)) {
-        return result; // found = false, path empty, cost = 0, hops = 0
+        return result;
     }
-
-    // 2. Validate active state (inactive routers cannot act as source or destination)
+    // Check if source and destination are active
     if (!network.isRouterActive(source) || !network.isRouterActive(destination)) {
         return result;
     }
@@ -31,45 +31,46 @@ RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::
         return result;
     }
 
-    // 3. Initialize distances to infinity
-    const long long INF = std::numeric_limits<long long>::max();
-    std::unordered_map<std::string, long long> dist;
-    std::unordered_map<std::string, std::string> predecessor;
+    // 1. How distances are initialized:
+    // Set all router distances to infinity, except the source router which starts at 0.
+    const long long INF = numeric_limits<long long>::max();
+    unordered_map<string, long long> dist;
+    unordered_map<string, string> predecessor;
 
     for (const auto& pair : network.getRouters()) {
         dist[pair.first] = INF;
     }
-
-    // 4. Set source distance to zero
     dist[source] = 0;
 
-    // 5. Min-priority queue: pair of (distance, router ID)
-    using DistPair = std::pair<long long, std::string>;
-    std::priority_queue<DistPair, std::vector<DistPair>, std::greater<DistPair>> pq;
+    // 2. How the next router with the lowest known distance is selected:
+    // We use a min-priority queue storing pairs of (distance, router ID).
+    // The top of the queue always gives the router with the smallest tentative distance.
+    priority_queue<pair<long long, string>, vector<pair<long long, string>>, greater<pair<long long, string>>> pq;
     pq.push({0, source});
 
-    // 6. Repeatedly extract the router with the smallest tentative distance
     while (!pq.empty()) {
-        auto [currentDist, u] = pq.top();
+        long long currentDist = pq.top().first;
+        string u = pq.top().second;
         pq.pop();
 
-        // 7. Ignore stale priority-queue entries
+        // Skip stale entries if we already found a shorter path to u
         if (currentDist > dist[u]) {
             continue;
         }
 
-        // 8. Early-exit optimization once destination is finalized
+        // Early-exit optimization: stop once destination is reached
         if (u == destination) {
             break;
         }
 
-        // 9. Relax each valid neighboring edge
+        // 3. How neighboring routers are updated (relaxation):
+        // For each neighbor, check if traveling through router u gives a cheaper distance.
         const auto& neighbors = network.getNeighbors(u);
         for (const auto& edge : neighbors) {
-            const std::string& v = edge.first;
+            string v = edge.first;
             int weight = edge.second;
 
-            // Inactive router handling: skip inactive intermediate routers
+            // Skip inactive neighboring routers
             if (!network.isRouterActive(v)) {
                 continue;
             }
@@ -77,81 +78,75 @@ RouteResult RoutingEngine::findShortestRoute(const Network& network, const std::
             long long newDist = currentDist + weight;
             if (newDist < dist[v]) {
                 dist[v] = newDist;
-                predecessor[v] = u; // 10. Update predecessor
+                predecessor[v] = u;
                 pq.push({newDist, v});
             }
         }
     }
 
-    // Destination unreachable
+    // If destination distance remains infinity, it is unreachable
     if (dist[destination] == INF) {
         result.found = false;
-        result.path.clear();
-        result.totalCost = 0;
-        result.hops = 0;
         return result;
     }
 
-    // 11. Reconstruct the path by walking backward through predecessors
-    std::vector<std::string> reconstructedPath;
-    std::string curr = destination;
+    // 4. How the final path is reconstructed:
+    // Walk backward from the destination to the source using the predecessor map,
+    // then reverse the path to get the correct source-to-destination order.
+    vector<string> path;
+    string curr = destination;
     while (curr != source) {
-        reconstructedPath.push_back(curr);
-        auto it = predecessor.find(curr);
-        if (it == predecessor.end()) {
-            return result; // Unreachable safeguard
+        path.push_back(curr);
+        if (predecessor.find(curr) == predecessor.end()) {
+            return result;
         }
-        curr = it->second;
+        curr = predecessor[curr];
     }
-    reconstructedPath.push_back(source);
+    path.push_back(source);
 
-    // 12. Reverse to obtain source-to-destination order
-    std::reverse(reconstructedPath.begin(), reconstructedPath.end());
+    reverse(path.begin(), path.end());
 
-    // 13. Hop count is the number of edges (hops = vertices - 1)
     result.found = true;
-    result.path = reconstructedPath;
+    result.path = path;
     result.totalCost = dist[destination];
-    result.hops = static_cast<int>(reconstructedPath.size() - 1);
-
+    result.hops = static_cast<int>(path.size() - 1);
     return result;
 }
 
-void RoutingEngine::displayRoutingTable(const Network& network, const std::string& source) const {
+void RoutingEngine::displayRoutingTable(const Network& network, string source) const {
     if (!network.hasRouter(source)) {
-        std::cout << "[Error] Source router '" << source << "' does not exist in the network.\n";
+        cout << "[Error] Source router '" << source << "' does not exist in the network.\n";
         return;
     }
     if (!network.isRouterActive(source)) {
-        std::cout << "[Error] Source router '" << source << "' is currently INACTIVE.\n";
+        cout << "[Error] Source router '" << source << "' is currently INACTIVE.\n";
         return;
     }
 
-    // Run single-source Dijkstra without early exit to find paths to all reachable nodes
-    const long long INF = std::numeric_limits<long long>::max();
-    std::unordered_map<std::string, long long> dist;
-    std::unordered_map<std::string, std::string> predecessor;
+    // Compute shortest paths from source to all reachable routers in a single Dijkstra run
+    const long long INF = numeric_limits<long long>::max();
+    unordered_map<string, long long> dist;
+    unordered_map<string, string> predecessor;
 
     for (const auto& pair : network.getRouters()) {
         dist[pair.first] = INF;
     }
     dist[source] = 0;
 
-    using DistPair = std::pair<long long, std::string>;
-    std::priority_queue<DistPair, std::vector<DistPair>, std::greater<DistPair>> pq;
+    priority_queue<pair<long long, string>, vector<pair<long long, string>>, greater<pair<long long, string>>> pq;
     pq.push({0, source});
 
     while (!pq.empty()) {
-        auto [currentDist, u] = pq.top();
+        long long currentDist = pq.top().first;
+        string u = pq.top().second;
         pq.pop();
 
         if (currentDist > dist[u]) {
             continue;
         }
 
-        const auto& neighbors = network.getNeighbors(u);
-        for (const auto& edge : neighbors) {
-            const std::string& v = edge.first;
+        for (const auto& edge : network.getNeighbors(u)) {
+            string v = edge.first;
             int weight = edge.second;
 
             if (!network.isRouterActive(v)) {
@@ -167,46 +162,45 @@ void RoutingEngine::displayRoutingTable(const Network& network, const std::strin
         }
     }
 
-    // Sort destinations alphabetically for clean table presentation
-    std::vector<std::string> dests;
-    dests.reserve(network.getRouters().size());
+    // Sort destination router IDs alphabetically
+    vector<string> dests;
     for (const auto& pair : network.getRouters()) {
         dests.push_back(pair.first);
     }
-    std::sort(dests.begin(), dests.end());
+    sort(dests.begin(), dests.end());
 
-    std::cout << "\n======================================================================\n";
-    std::cout << "               ROUTING TABLE FOR ROUTER [" << source << "]\n";
-    std::cout << "======================================================================\n";
-    std::cout << std::left << std::setw(15) << "Destination"
-              << "| " << std::setw(15) << "Total Cost"
-              << "| " << std::setw(15) << "Next Hop"
-              << "| " << "Status\n";
-    std::cout << "----------------------------------------------------------------------\n";
+    cout << "\n======================================================================\n";
+    cout << "               ROUTING TABLE FOR ROUTER [" << source << "]\n";
+    cout << "======================================================================\n";
+    cout << left << setw(15) << "Destination"
+         << "| " << setw(15) << "Total Cost"
+         << "| " << setw(15) << "Next Hop"
+         << "| Status\n";
+    cout << "----------------------------------------------------------------------\n";
 
-    for (const auto& dest : dests) {
-        std::cout << std::left << std::setw(15) << dest << "| ";
+    for (const string& dest : dests) {
+        cout << left << setw(15) << dest << "| ";
 
         if (dest == source) {
-            std::cout << std::setw(15) << "0"
-                      << "| " << std::setw(15) << source
-                      << "| Local (Self)\n";
+            cout << setw(15) << "0"
+                 << "| " << setw(15) << source
+                 << "| Local (Self)\n";
         } else if (dist[dest] == INF) {
-            std::cout << std::setw(15) << "UNREACHABLE"
-                      << "| " << std::setw(15) << "None"
-                      << "| Unreachable\n";
+            cout << setw(15) << "UNREACHABLE"
+                 << "| " << setw(15) << "None"
+                 << "| Unreachable\n";
         } else {
-            // Find the immediate next hop from source to dest using predecessor chain
-            std::string curr = dest;
+            // Trace backward from dest to find the first router after source
+            string curr = dest;
             while (predecessor.find(curr) != predecessor.end() && predecessor.at(curr) != source) {
                 curr = predecessor.at(curr);
             }
-            std::string nextHop = curr;
+            string nextHop = curr;
 
-            std::cout << std::setw(15) << dist[dest]
-                      << "| " << std::setw(15) << nextHop
-                      << "| Reachable\n";
+            cout << setw(15) << dist[dest]
+                 << "| " << setw(15) << nextHop
+                 << "| Reachable\n";
         }
     }
-    std::cout << "======================================================================\n";
+    cout << "======================================================================\n";
 }

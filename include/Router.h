@@ -3,22 +3,18 @@
 
 #include <string>
 
-/**
- * @class Router
- * @brief Represents a single router node in the simulated network.
- * 
- * Single Responsibility:
- * Encapsulates router identity and operational state (active vs. inactive).
- */
+using namespace std;
+
+// Represents a network router
 class Router {
 private:
-    std::string id_;
+    string id_;
     bool active_;
 
 public:
-    explicit Router(const std::string& id);
+    Router(string id);
 
-    const std::string& getId() const;
+    string getId() const;
     bool isActive() const;
     void setActive(bool active);
 };
