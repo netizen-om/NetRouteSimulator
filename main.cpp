@@ -1,257 +1,243 @@
 #include <iostream>
+#include <string>
 #include <vector>
-#include <queue>
-#include <algorithm>
+#include "Network.h"
 
-using namespace std;
+/**
+ * @brief Handles user interface, console interaction, and application lifecycle.
+ *
+ * Demonstrates separation of concerns by keeping all I/O, menu logic,
+ * and user-input validation completely decoupled from the core Network domain class.
+ */
+class NetworkApp {
+private:
+    Network network; ///< Composed Network object (Composition: NetworkApp has-a Network)
 
-// Represents a connection (link) to a neighboring router
-struct Edge {
-    int to;    // Neighbor router ID
-    int cost;  // Cost/weight of the link
-};
-
-// Global network data
-int routerCount = 0;              // Total number of routers in the network
-vector<vector<Edge>> adjList;     // Adjacency list: adjList[u] stores edges connected to router u
-
-// Function to add a router with an automatically assigned integer ID
-void addRouter() {
-    routerCount++;
-    adjList.resize(routerCount + 1);
-    cout << "Router added successfully with ID: " << routerCount << "\n";
-}
-
-// Function to connect two existing routers with a positive cost
-void connectRouters() {
-    int router1, router2, cost;
-
-    cout << "Enter first router ID: ";
-    cin >> router1;
-    cout << "Enter second router ID: ";
-    cin >> router2;
-    cout << "Enter link cost: ";
-    cin >> cost;
-
-    // Validate that both routers exist
-    if (router1 < 1 || router1 > routerCount || router2 < 1 || router2 > routerCount) {
-        cout << "Error: One or both router IDs do not exist.\n";
-        return;
+    /**
+     * @brief Safely reads an integer from std::cin with robust error recovery.
+     * @param outValue Reference where the valid parsed integer will be stored.
+     * @return True if an integer was read successfully, false on invalid input or EOF.
+     */
+    static bool readInt(int& outValue) {
+        int temp = 0;
+        if (!(std::cin >> temp)) {
+            if (std::cin.eof()) {
+                return false;
+            }
+            std::cin.clear();
+            std::string dummy;
+            std::cin >> dummy;
+            std::cout << "Invalid input. Please enter a valid number.\n";
+            return false;
+        }
+        outValue = temp;
+        return true;
     }
 
-    // Validate self-connection
-    if (router1 == router2) {
-        cout << "Error: Cannot connect a router to itself.\n";
-        return;
+    /**
+     * @brief Displays the interactive CLI menu options.
+     */
+    void printMenu() const {
+        std::cout << "\n========================================\n";
+        std::cout << "         NETROUTE SIMULATOR\n";
+        std::cout << "========================================\n";
+        std::cout << "1. Add Router\n";
+        std::cout << "2. Connect Routers\n";
+        std::cout << "3. Display Network\n";
+        std::cout << "4. Find Shortest Route\n";
+        std::cout << "0. Exit\n";
+        std::cout << "========================================\n";
     }
 
-    // Validate positive link cost
-    if (cost <= 0) {
-        cout << "Error: Link cost must be a positive integer.\n";
-        return;
+    /**
+     * @brief Option 1: Adds a new router node to the network.
+     */
+    void handleAddRouter() {
+        int newId = network.addRouter();
+        std::cout << "Router added successfully with ID: " << newId << "\n";
     }
 
-    // Check if a connection already exists between router1 and router2
-    for (const Edge& edge : adjList[router1]) {
-        if (edge.to == router2) {
-            cout << "Error: A connection already exists between router "
-                 << router1 << " and router " << router2 << ".\n";
+    /**
+     * @brief Option 2: Connects two existing routers with a weighted bidirectional link.
+     */
+    void handleConnectRouters() {
+        int router1 = 0;
+        int router2 = 0;
+        int cost = 0;
+
+        std::cout << "Enter first router ID: ";
+        if (!readInt(router1)) {
             return;
         }
+        std::cout << "Enter second router ID: ";
+        if (!readInt(router2)) {
+            return;
+        }
+        std::cout << "Enter link cost: ";
+        if (!readInt(cost)) {
+            return;
+        }
+
+        ConnectionResult status = network.connectRouters(router1, router2, cost);
+
+        switch (status) {
+            case ConnectionResult::InvalidRouterId:
+                std::cout << "Error: One or both router IDs do not exist.\n";
+                break;
+            case ConnectionResult::SelfConnection:
+                std::cout << "Error: Cannot connect a router to itself.\n";
+                break;
+            case ConnectionResult::NonPositiveCost:
+                std::cout << "Error: Link cost must be a positive integer.\n";
+                break;
+            case ConnectionResult::DuplicateConnection:
+                std::cout << "Error: A connection already exists between router "
+                          << router1 << " and router " << router2 << ".\n";
+                break;
+            case ConnectionResult::Success:
+                std::cout << "Successfully connected router " << router1 << " and router "
+                          << router2 << " with cost " << cost << ".\n";
+                break;
+        }
     }
 
-    // Add bidirectional connection
-    adjList[router1].push_back({router2, cost});
-    adjList[router2].push_back({router1, cost});
+    /**
+     * @brief Option 3: Displays the complete network topology including isolated routers.
+     */
+    void handleDisplayNetwork() const {
+        if (network.isEmpty()) {
+            std::cout << "The network is empty. No routers added yet.\n";
+            return;
+        }
 
-    cout << "Successfully connected router " << router1 << " and router "
-         << router2 << " with cost " << cost << ".\n";
-}
+        std::cout << "\n========================================\n";
+        std::cout << "           NETWORK TOPOLOGY\n";
+        std::cout << "========================================\n";
 
-// Function to display the network topology
-void displayNetwork() {
-    if (routerCount == 0) {
-        cout << "The network is empty. No routers added yet.\n";
-        return;
-    }
-
-    cout << "\n========================================\n";
-    cout << "           NETWORK TOPOLOGY\n";
-    cout << "========================================\n";
-
-    for (int i = 1; i <= routerCount; ++i) {
-        cout << "Router " << i << " -> ";
-        if (adjList[i].empty()) {
-            cout << "[No connections (Isolated)]\n";
-        } else {
-            for (size_t j = 0; j < adjList[i].size(); ++j) {
-                if (j > 0) {
-                    cout << ", ";
+        for (int i = 1; i <= network.getRouterCount(); ++i) {
+            std::cout << "Router " << i << " -> ";
+            const std::vector<Edge>& neighbors = network.getNeighbors(i);
+            if (neighbors.empty()) {
+                std::cout << "[No connections (Isolated)]\n";
+            } else {
+                for (size_t j = 0; j < neighbors.size(); ++j) {
+                    if (j > 0) {
+                        std::cout << ", ";
+                    }
+                    std::cout << "Router " << neighbors[j].to
+                              << " (Cost: " << neighbors[j].cost << ")";
                 }
-                cout << "Router " << adjList[i][j].to << " (Cost: " << adjList[i][j].cost << ")";
-            }
-            cout << "\n";
-        }
-    }
-    cout << "========================================\n";
-}
-
-// Function to find the shortest route between two routers using Dijkstra's algorithm
-void findShortestRoute() {
-    int source, destination;
-
-    cout << "Enter source router ID: ";
-    cin >> source;
-    cout << "Enter destination router ID: ";
-    cin >> destination;
-
-    // Validate router IDs
-    if (source < 1 || source > routerCount || destination < 1 || destination > routerCount) {
-        cout << "Error: Invalid router ID. Router does not exist.\n";
-        return;
-    }
-
-    // Trivial case: source is destination
-    if (source == destination) {
-        cout << "\n========================================\n";
-        cout << "            SHORTEST ROUTE\n";
-        cout << "========================================\n";
-        cout << "Source Router: " << source << "\n";
-        cout << "Destination Router: " << destination << "\n";
-        cout << "Shortest Path: " << source << "\n";
-        cout << "Total Cost: 0\n";
-        cout << "========================================\n";
-        return;
-    }
-
-    const int INF = 1000000000; // Large number representing infinity
-
-    // distance[i] stores the minimum cost from source to router i
-    vector<int> distance(routerCount + 1, INF);
-
-    // parent[i] stores the previous router on the shortest path
-    vector<int> parent(routerCount + 1, -1);
-
-    // visited[i] tracks whether the shortest distance to router i is finalized
-    vector<bool> visited(routerCount + 1, false);
-
-    // Min-priority queue storing pairs of (cost, routerId)
-    // greater ensures the router with the lowest cost is at the top
-    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
-
-    // Step 1: Initialize the source distance to 0 and push into queue
-    distance[source] = 0;
-    pq.push({0, source});
-
-    while (!pq.empty()) {
-        // Step 2: Extract the router with the smallest known distance
-        int currentCost = pq.top().first;
-        int currentRouter = pq.top().second;
-        pq.pop();
-
-        // Skip if this router has already been visited
-        if (visited[currentRouter]) {
-            continue;
-        }
-        visited[currentRouter] = true;
-
-        // Stop early if the destination router is reached
-        if (currentRouter == destination) {
-            break;
-        }
-
-        // Step 3: Check all neighbors of the current router
-        for (const Edge& edge : adjList[currentRouter]) {
-            int neighbor = edge.to;
-            int linkCost = edge.cost;
-
-            // Relaxation step: update neighbor distance if a shorter path is found
-            if (!visited[neighbor] && currentCost + linkCost < distance[neighbor]) {
-                distance[neighbor] = currentCost + linkCost;
-                parent[neighbor] = currentRouter;
-                pq.push({distance[neighbor], neighbor});
+                std::cout << "\n";
             }
         }
+        std::cout << "========================================\n";
     }
 
-    // Step 4: Check if a path to the destination exists
-    if (distance[destination] == INF) {
-        cout << "No route exists between these routers.\n";
-        return;
-    }
+    /**
+     * @brief Option 4: Finds and displays the shortest route using Dijkstra's algorithm.
+     */
+    void handleFindShortestRoute() const {
+        int source = 0;
+        int destination = 0;
 
-    // Step 5: Reconstruct the path from destination back to source
-    vector<int> path;
-    int curr = destination;
-    while (curr != -1) {
-        path.push_back(curr);
-        curr = parent[curr];
-    }
-    reverse(path.begin(), path.end());
-
-    // Display the shortest route results
-    cout << "\n========================================\n";
-    cout << "            SHORTEST ROUTE\n";
-    cout << "========================================\n";
-    cout << "Source Router: " << source << "\n";
-    cout << "Destination Router: " << destination << "\n";
-    cout << "Shortest Path: ";
-    for (size_t i = 0; i < path.size(); ++i) {
-        if (i > 0) {
-            cout << " -> ";
+        std::cout << "Enter source router ID: ";
+        if (!readInt(source)) {
+            return;
         }
-        cout << path[i];
+        std::cout << "Enter destination router ID: ";
+        if (!readInt(destination)) {
+            return;
+        }
+
+        RouteResult result = network.findShortestRoute(source, destination);
+
+        // Validation failure (e.g. router does not exist)
+        if (!result.success) {
+            std::cout << "Error: Invalid router ID. Router does not exist.\n";
+            return;
+        }
+
+        // Trivial case: source is destination
+        if (result.sameSourceDest) {
+            std::cout << "\n========================================\n";
+            std::cout << "            SHORTEST ROUTE\n";
+            std::cout << "========================================\n";
+            std::cout << "Source Router: " << source << "\n";
+            std::cout << "Destination Router: " << destination << "\n";
+            std::cout << "Shortest Path: " << source << "\n";
+            std::cout << "Total Cost: 0\n";
+            std::cout << "========================================\n";
+            return;
+        }
+
+        // Unreachable destination
+        if (!result.routeExists) {
+            std::cout << "No route exists between these routers.\n";
+            return;
+        }
+
+        // Output path and minimum cost
+        std::cout << "\n========================================\n";
+        std::cout << "            SHORTEST ROUTE\n";
+        std::cout << "========================================\n";
+        std::cout << "Source Router: " << source << "\n";
+        std::cout << "Destination Router: " << destination << "\n";
+        std::cout << "Shortest Path: ";
+        for (size_t i = 0; i < result.path.size(); ++i) {
+            if (i > 0) {
+                std::cout << " -> ";
+            }
+            std::cout << result.path[i];
+        }
+        std::cout << "\nTotal Cost: " << result.totalCost << "\n";
+        std::cout << "========================================\n";
     }
-    cout << "\nTotal Cost: " << distance[destination] << "\n";
-    cout << "========================================\n";
-}
+
+public:
+    /**
+     * @brief Launches the application loop.
+     */
+    void run() {
+        int choice = -1;
+
+        do {
+            printMenu();
+            std::cout << "Enter your choice: ";
+
+            if (!readInt(choice)) {
+                if (std::cin.eof()) {
+                    std::cout << "\nEnd of input detected. Exiting.\n";
+                    break;
+                }
+                continue;
+            }
+
+            switch (choice) {
+                case 1:
+                    handleAddRouter();
+                    break;
+                case 2:
+                    handleConnectRouters();
+                    break;
+                case 3:
+                    handleDisplayNetwork();
+                    break;
+                case 4:
+                    handleFindShortestRoute();
+                    break;
+                case 0:
+                    std::cout << "Exiting NetRoute Simulator. Goodbye!\n";
+                    break;
+                default:
+                    std::cout << "Invalid choice. Please select an option between 0 and 4.\n";
+                    break;
+            }
+        } while (choice != 0);
+    }
+};
 
 int main() {
-    int choice = -1;
-
-    do {
-        cout << "\n========================================\n";
-        cout << "         NETROUTE SIMULATOR\n";
-        cout << "========================================\n";
-        cout << "1. Add Router\n";
-        cout << "2. Connect Routers\n";
-        cout << "3. Display Network\n";
-        cout << "4. Find Shortest Route\n";
-        cout << "0. Exit\n";
-        cout << "========================================\n";
-        cout << "Enter your choice: ";
-        cin >> choice;
-
-        // Handle invalid non-numeric input
-        if (cin.fail()) {
-            cin.clear();
-            string dummy;
-            cin >> dummy;
-            cout << "Invalid input. Please enter a valid number.\n";
-            continue;
-        }
-
-        switch (choice) {
-            case 1:
-                addRouter();
-                break;
-            case 2:
-                connectRouters();
-                break;
-            case 3:
-                displayNetwork();
-                break;
-            case 4:
-                findShortestRoute();
-                break;
-            case 0:
-                cout << "Exiting NetRoute Simulator. Goodbye!\n";
-                break;
-            default:
-                cout << "Invalid choice. Please select an option between 0 and 4.\n";
-                break;
-        }
-    } while (choice != 0);
-
+    NetworkApp app;
+    app.run();
     return 0;
 }
