@@ -1,226 +1,25 @@
 # NETROUTE SIMULATOR
 
-A clean, object-oriented CLI Network Routing Simulator written in standard C++17. Designed specifically for college Object-Oriented Programming (OOP) and Data Structures & Algorithms coursework, vivas, and practical demonstrations.
+A lightweight, beginner-friendly Object-Oriented C++ Network Routing Simulator written in standard C++17. Designed specifically for college Object-Oriented Programming (OOP) and Data Structures vivas and demonstrations.
 
 ---
 
-## 1. Project Overview & Objectives
+## 1. Project Overview
 
-**NetRoute Simulator** models a computer network of routers connected by bidirectional, weighted communication links. It demonstrates core Object-Oriented Programming (OOP) design patterns and graph algorithms without unnecessary overengineering.
+**NetRoute Simulator** models a computer network of routers connected by bidirectional, weighted communication links. It allows users to:
+1. Dynamically add routers with automatically assigned integer IDs (`1, 2, 3, ...`).
+2. Establish communication links between routers with custom positive costs.
+3. Visualize the entire network topology, including connected and isolated routers.
+4. Calculate and display the optimal shortest path and minimum transmission cost between any two routers using **Dijkstra's Algorithm**.
 
-### Primary Objectives:
-1. **Object-Oriented Design**: Replace procedural code with an encapsulated, class-based architecture adhering to the Single Responsibility Principle (SRP).
-2. **Decoupled Architecture**: Separate core domain network logic and shortest-path calculation from the console user interface and terminal input/output.
-3. **Data Integrity & Validation**: Protect internal network state with private members and rigorous input validation against self-connections, duplicate links, non-positive costs, and out-of-range router IDs.
-4. **Optimal Pathfinding**: Compute the lowest-cost transmission path using **Dijkstra's Algorithm** with an STL min-priority queue.
-5. **Viva Readiness**: Structure code and documentation so that every class, method, and algorithm can be clearly explained and defended in an academic oral examination.
-
----
-
-## 2. Key Features
-
-- **Dynamic Router Management**: Automatically assigns incremental integer IDs (`1, 2, 3, ...`) upon router creation.
-- **Bidirectional Links**: Connects pairs of routers with user-defined positive transmission costs.
-- **Strict Validation Rules**:
-  - Rejects non-existent router IDs.
-  - Rejects self-loops (connecting a router to itself).
-  - Rejects zero or negative link costs ($\le 0$).
-  - Rejects duplicate connections between already connected routers.
-  - Robustly recovers from invalid non-numeric inputs without crashing or entering infinite loops.
-- **Complete Topology Visualization**: Displays every router alongside its active connections and transmission costs; highlights isolated routers (`[No connections (Isolated)]`).
-- **Shortest Path Computation**: Uses Dijkstra's algorithm to compute the optimal hop sequence and minimum transmission cost.
-- **Special Route Handling**:
-  - Handles queries where the source equals the destination (returns 0 cost immediately).
-  - Detects partitioned or disconnected sub-networks (reports `"No route exists between these routers."`).
-- **Separation of Results**: Shortest path queries return a `RouteResult` object, enabling programmatic test verification.
+The project uses clean Object-Oriented Programming (OOP) principles—specifically **Encapsulation**, **Data Hiding**, and **Abstraction**—while remaining simple, readable, and free of unnecessary enterprise abstractions.
 
 ---
 
-## 3. Technologies & C++ Standard
+## 2. Menu Options
 
-- **Language**: C++17
-- **Standard Library Components**:
-  - `std::vector` (Dynamic contiguous storage for the adjacency list and path sequences)
-  - `std::priority_queue` with `std::greater` (Min-heap for Dijkstra's node selection)
-  - `std::pair` (Queue elements holding tentative distance and router ID)
-  - `std::algorithm` (`std::reverse` for backtracking reconstructed paths)
-  - `std::iostream`, `std::string` (Formatted terminal I/O)
-- **Compiler Requirements**: Any standard C++17 compliant compiler (`g++`, `clang++`, or MSVC).
-- **External Dependencies**: **None** (Zero third-party libraries required).
+The application presents a clean and simple menu:
 
----
-
-## 4. Project Architecture & Class Responsibilities
-
-The codebase is organized into modular components with clear separation of responsibilities:
-
-```
-NetRouteSimulator/
-├── Network.h          # Domain model declarations (Edge, RouteResult, Network class)
-├── Network.cpp        # Domain model implementation (Network logic & Dijkstra's algorithm)
-├── main.cpp           # Presentation layer (NetworkApp class & main entry point)
-├── tests.cpp          # Automated unit test suite verifying all 12 operational scenarios
-├── OOP_DESIGN.md      # In-depth OOP architecture document with Mermaid diagrams
-└── README.md          # Comprehensive project documentation and viva preparation guide
-```
-
-### Component Responsibilities:
-
-| Component | Type | Responsibility |
-| :--- | :--- | :--- |
-| [`Edge`](file:///f:/DEV/NetRouteSimulator/Network.h) | `struct` | Lightweight Plain Old Data (POD) holder for destination router ID and link cost. |
-| [`ConnectionResult`](file:///f:/DEV/NetRouteSimulator/Network.h) | `enum class` | Strongly-typed status returned when connecting routers (`Success`, `InvalidRouterId`, etc.). |
-| [`RouteResult`](file:///f:/DEV/NetRouteSimulator/Network.h) | `struct` | Encapsulates shortest-path query outcome (existence, total cost, hop list). |
-| [`Network`](file:///f:/DEV/NetRouteSimulator/Network.h) | `class` | **Core Domain Model**: Encapsulates router count and adjacency list. Handles topology changes and Dijkstra's algorithm. Has **no** console I/O dependencies. |
-| [`NetworkApp`](file:///f:/DEV/NetRouteSimulator/main.cpp) | `class` | **Presentation / Controller**: Manages the interactive menu loop, input validation, and formatted console output. Composes a `Network` instance. |
-| [`main()`](file:///f:/DEV/NetRouteSimulator/main.cpp) | function | Program entry point; instantiates `NetworkApp` and invokes `app.run()`. |
-
----
-
-## 5. Object-Oriented Principles Implemented
-
-### A. Encapsulation & Data Hiding
-All internal data structures representing the network state are declared `private` within `class Network`:
-
-```cpp
-class Network {
-private:
-    int routerCount;                        // Guarded router counter
-    std::vector<std::vector<Edge>> adjList; // Adjacency list: adjList[u] contains edges from u
-    // ...
-};
-```
-External code cannot directly alter `routerCount` or push malformed edges into `adjList`. All modifications occur strictly through validated public member functions (`addRouter()`, `connectRouters()`).
-
-### B. Class-Based Abstraction
-`Network` provides a high-level public interface:
-- `addRouter()`
-- `connectRouters(router1, router2, cost)`
-- `findShortestRoute(source, destination)`
-
-Consumers (such as `NetworkApp` or automated tests) do not need to know whether the graph uses an adjacency list, an adjacency matrix, or how the min-priority queue relaxes edges during Dijkstra's algorithm.
-
-Furthermore, C++ header/implementation separation (`Network.h` vs `Network.cpp`) strictly separates the public contract from the internal algorithm.
-
-### C. Composition
-`NetworkApp` demonstrates the **"has-a"** relationship by owning a private instance of `Network`:
-```cpp
-class NetworkApp {
-private:
-    Network network; // Composition: NetworkApp owns Network
-    // ...
-};
-```
-
-### D. Why Inheritance and Polymorphism Are Omitted
-- **Inheritance** models hierarchical subtyping ("is-a"). In this simulator, all routers are homogeneous, and all communication links follow identical bidirectional rules. Adding artificial parent classes (e.g., `BaseRouter`) would introduce unnecessary cognitive overhead without modeling real variations.
-- **Polymorphism** (virtual functions and vtables) enables dynamic runtime method selection. Since there is a single concrete routing algorithm (Dijkstra) and one graph model, static dispatch is faster, cleaner, and adheres to the **YAGNI** (*You Aren't Gonna Need It*) principle.
-
----
-
-## 6. How the Network is Represented
-
-The network is modeled as an undirected, weighted graph using an **Adjacency List**:
-
-```cpp
-struct Edge {
-    int to;    // Neighbor router ID
-    int cost;  // Non-negative link weight
-};
-
-std::vector<std::vector<Edge>> adjList;
-```
-
-### Why an Adjacency List?
-- **Space Efficiency**: Consumes $\mathcal{O}(V + E)$ memory compared to $\mathcal{O}(V^2)$ required by an adjacency matrix. This makes it optimal for real-world sparse network topologies.
-- **Fast Traversal**: During edge relaxation in Dijkstra's algorithm, the algorithm iterates only over existing links (`adjList[u]`) rather than checking all $V$ potential vertices.
-- **Natural 1-Based Indexing**: `adjList` is sized to `routerCount + 1`, leaving index 0 unused so that router IDs `1..N` map directly to vector indices without offset subtractions.
-
----
-
-## 7. How Dijkstra's Algorithm Works
-
-Dijkstra's algorithm computes the shortest path from a single source router to a destination router:
-
-```
-[Source] -> (Push tentative cost 0 into Min-Heap)
-   │
-   ▼
-[Extract Min] -> Pop router with minimum tentative distance
-   │
-   ├─► Already visited? -> Skip
-   ├─► Destination reached? -> Early exit
-   │
-   ▼
-[Relax Neighbors] -> For each neighbor:
-   │  If (currentCost + linkCost < knownDistance):
-   │     Update knownDistance
-   │     Record predecessor in parent[]
-   │     Push (newDistance, neighbor) into Min-Heap
-   ▼
-[Reconstruct Path] -> Backtrack from destination to source using parent[]
-```
-
-### Min-Priority Queue Implementation:
-In C++, `std::priority_queue` is a max-heap by default. We configure it with `std::greater` to create a min-heap:
-```cpp
-std::priority_queue<std::pair<int, int>,
-                    std::vector<std::pair<int, int>>,
-                    std::greater<std::pair<int, int>>> pq;
-```
-
----
-
-## 8. Time and Space Complexity
-
-| Operation | Time Complexity | Space Complexity | Explanation |
-| :--- | :--- | :--- | :--- |
-| **Add Router** | $\mathcal{O}(1)$ amortized | $\mathcal{O}(1)$ | Resizes the outer vector of the adjacency list. |
-| **Connect Routers** | $\mathcal{O}(\text{deg}(u))$ | $\mathcal{O}(1)$ | Checks for duplicate connections across existing neighbor edges, then pushes two `Edge` structs. |
-| **Display Network** | $\mathcal{O}(V + E)$ | $\mathcal{O}(1)$ auxiliary | Iterates across all vertices and their incident edges. |
-| **Find Shortest Route** | $\mathcal{O}((V + E) \log V)$ | $\mathcal{O}(V)$ auxiliary | Standard Dijkstra with min-heap priority queue; maintains `distance`, `visited`, and `parent` arrays. |
-
-*$V$ = number of routers, $E$ = number of links, $\text{deg}(u)$ = degree (number of connections) of router $u$.*
-
----
-
-## 9. Compilation & Execution Instructions
-
-The project uses only standard C++17 libraries. You can compile using GCC / Clang on Windows, Linux, or macOS.
-
-### Compile the Application:
-```bash
-g++ -std=c++17 -Wall -Wextra -Wpedantic main.cpp Network.cpp -o NetRouteSimulator
-```
-
-### Run the Application:
-- **Windows (PowerShell / Command Prompt)**:
-  ```powershell
-  .\NetRouteSimulator.exe
-  ```
-- **Linux / macOS**:
-  ```bash
-  ./NetRouteSimulator
-  ```
-
-### Compile & Run the Automated Tests:
-```bash
-g++ -std=c++17 -Wall -Wextra -Wpedantic tests.cpp Network.cpp -o tests
-```
-- **Windows**:
-  ```powershell
-  .\tests.exe
-  ```
-- **Linux / macOS**:
-  ```bash
-  ./tests
-  ```
-
----
-
-## 10. Menu Options & Usage Examples
-
-### Main Menu Interface:
 ```text
 ========================================
          NETROUTE SIMULATOR
@@ -234,113 +33,201 @@ g++ -std=c++17 -Wall -Wextra -Wpedantic tests.cpp Network.cpp -o tests
 Enter your choice: 
 ```
 
-### Walkthrough Scenario:
-1. **Add Routers**:
-   - Option 1 $\rightarrow$ Router 1 added.
-   - Option 1 $\rightarrow$ Router 2 added.
-   - Option 1 $\rightarrow$ Router 3 added.
-2. **Connect Links**:
-   - Connect 1 and 2 with cost 4.
-   - Connect 2 and 3 with cost 5.
-   - Connect 1 and 3 with cost 12.
-3. **Display Topology (Option 3)**:
-   ```text
-   ========================================
-              NETWORK TOPOLOGY
-   ========================================
-   Router 1 -> Router 2 (Cost: 4), Router 3 (Cost: 12)
-   Router 2 -> Router 1 (Cost: 4), Router 3 (Cost: 5)
-   Router 3 -> Router 2 (Cost: 5), Router 1 (Cost: 12)
-   ========================================
-   ```
-4. **Compute Shortest Path from Router 1 to Router 3 (Option 4)**:
-   ```text
-   ========================================
-               SHORTEST ROUTE
-   ========================================
-   Source Router: 1
-   Destination Router: 3
-   Shortest Path: 1 -> 2 -> 3
-   Total Cost: 9
-   ========================================
-   ```
-   *(Note: Dijkstra correctly selects the multi-hop path $1 \rightarrow 2 \rightarrow 3$ with cost 9 instead of the direct link of cost 12).*
+---
+
+## 3. Features & Validation Rules
+
+- **Option 1: Add Router**
+  - Adds a new router node to the network.
+  - Automatically generates an incremental integer ID (`1, 2, 3...`).
+  - Resizes the adjacency list to accommodate new connections.
+
+- **Option 2: Connect Routers**
+  - Prompts for two router IDs and a link cost using direct `cin`.
+  - Links are bidirectional (traffic flows both ways).
+  - **Validation checks:**
+    - Rejects IDs of routers that do not exist.
+    - Rejects self-loops (connecting a router to itself).
+    - Rejects non-positive link costs ($\le 0$).
+    - Rejects duplicate connections between already connected routers.
+
+- **Option 3: Display Network**
+  - Displays each router along with its connected neighbors and link costs.
+  - Clearly identifies isolated routers (`[No connections (Isolated)]`).
+
+- **Option 4: Find Shortest Route**
+  - Prompts for source and destination router IDs.
+  - Uses Dijkstra's algorithm with an STL min-priority queue to compute the lowest-cost path.
+  - Prints the complete hop sequence (e.g., `1 -> 2 -> 3`) and total cost.
+  - Handles identical source and destination routers immediately with cost 0.
+  - Detects unreachable destinations and displays `"No route exists between these routers."`.
+
+- **Option 0: Exit**
+  - Gracefully terminates the program.
 
 ---
 
-## 11. Input Validation & Error Handling
+## 4. Object-Oriented Architecture
 
-- **Non-Numeric Console Input**: If a user enters non-numeric text (e.g., `abc`), `NetworkApp::readInt` detects `std::cin.fail()`, clears the stream flag, consumes the invalid token, and warns the user without crashing or entering an infinite loop.
-- **Out-of-Range Router IDs**: Attempting to connect or query router IDs $< 1$ or $> \text{routerCount}$ produces:
-  `Error: One or both router IDs do not exist.`
-- **Self-Loops**: Attempting to connect a router to itself yields:
-  `Error: Cannot connect a router to itself.`
-- **Non-Positive Cost**: Negative numbers or zero are rejected:
-  `Error: Link cost must be a positive integer.`
-- **Duplicate Connections**: Attempting to add an edge between two already connected routers outputs:
-  `Error: A connection already exists between router X and router Y.`
-- **Unreachable Routes**: If routers are in disconnected components, the simulator outputs:
-  `No route exists between these routers.`
+The project is structured into three clean files:
+
+```
+NetRouteSimulator/
+├── Network.h          # Edge struct and Network class declaration
+├── Network.cpp        # Network class implementation & Dijkstra's algorithm
+├── main.cpp           # Main function and menu loop
+├── tests.cpp          # Automated basic verification tests
+├── OOP_DESIGN.md      # OOP architecture and class diagram
+└── README.md          # Project documentation and viva guide
+```
+
+### Class Structure:
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Edge {
+        +int to
+        +int cost
+    }
+
+    class Network {
+        -int routerCount
+        -vector~vector~Edge~~ adjList
+        +Network()
+        +void addRouter()
+        +void connectRouters()
+        +void displayNetwork()
+        +void findShortestRoute()
+    }
+
+    Network *-- Edge : "stores in adjList"
+```
+
+### Component Breakdown:
+1. **`struct Edge`**:
+   - Represents a connection to a neighboring router with fields `to` and `cost`.
+   - Uses a `struct` because it is a simple Plain Old Data record with no invariant logic to hide.
+
+2. **`class Network`**:
+   - Encapsulates the network state: `routerCount` and `adjList` are **`private`**.
+   - Public member functions: `addRouter()`, `connectRouters()`, `displayNetwork()`, `findShortestRoute()`.
+
+3. **`main()` function**:
+   - Creates a `Network` object and runs the menu loop using standard `cin`, `cout`, `switch`, and `if-else`.
 
 ---
 
-## 12. Automated Verification & Testing
+## 5. OOP Principles Explained
 
-The project includes an automated test harness in [`tests.cpp`](file:///f:/DEV/NetRouteSimulator/tests.cpp) covering all critical scenarios:
+### Encapsulation & Data Hiding
+In procedural code, `routerCount` and `adjList` were global variables accessible from anywhere. In this OOP refactoring:
+- `routerCount` and `adjList` are made `private` data members inside `class Network`.
+- External code cannot accidentally modify the router count or insert invalid edges directly into the adjacency list.
+- All modifications are strictly controlled via public member functions.
 
-1. **Add Multiple Routers**: Validates incremental ID assignment and router count tracking.
-2. **Valid Bidirectional Connections**: Confirms adjacency symmetric entries for both endpoints.
-3. **Out-of-Range Router Rejection**: Confirms rejection for ID 0 and large IDs.
-4. **Self-Loop Prevention**: Verifies self-connections are blocked.
-5. **Non-Positive Cost Rejection**: Verifies costs of 0 and negative values are rejected.
-6. **Duplicate Connection Prevention**: Verifies both forward and reverse duplicate connection attempts are rejected.
-7. **Isolated Router Detection**: Checks routers without connections are correctly identified.
-8. **Multi-Hop Shortest Path**: Verifies correct hop sequence and cost across intermediate routers.
-9. **Alternative Path Optimization**: Confirms lower-cost multi-hop paths are preferred over direct higher-cost links.
-10. **Trivial Path Handling**: Verifies 0 cost when source equals destination.
-11. **Partitioned / Disconnected Routers**: Verifies safe handling and empty path when no route exists.
-12. **Invalid Query Handling**: Verifies safe rejection of invalid source/destination IDs.
+### Abstraction
+The `main()` function only interacts with high-level member functions:
+```cpp
+network.addRouter();
+network.connectRouters();
+network.displayNetwork();
+network.findShortestRoute();
+```
+`main()` does not need to know that the network uses a 1-based `vector<vector<Edge>>` or how Dijkstra's min-heap relaxes edges.
 
----
-
-## 13. Limitations & Future Improvements
-
-- **Dynamic Link Removal**: Currently, connections cannot be removed or updated after creation. A future enhancement could introduce `disconnectRouters(u, v)` and `updateLinkCost(u, v, newCost)`.
-- **Directed Links**: The current model assumes symmetric bidirectional links. Support for directed / asymmetric links (e.g., upload vs download speeds) could be added.
-- **Negative Edge Weights**: Dijkstra's algorithm does not support negative weights. Integrating the Bellman-Ford algorithm would allow handling graphs with negative edge costs.
-- **Dynamic Routing Protocols**: Modeling real-world protocols such as OSPF (Open Shortest Path First) or BGP (Border Gateway Protocol) with dynamic link-state announcements.
+### Why Inheritance and Polymorphism Are Not Needed
+- **Inheritance** is used when modeling an "is-a" hierarchy between different types of objects. In this simulator, all routers and links are identical.
+- **Polymorphism** is used when different objects respond differently to the same function call at runtime. Since there is only one graph model and one routing algorithm (Dijkstra), virtual functions would only add unnecessary complexity.
 
 ---
 
-## 14. College Viva Questions & Answers
+## 6. How Dijkstra's Algorithm Works
 
-### Q1: What makes this implementation Object-Oriented compared to the original code?
-**A:** The original code relied on global variables (`routerCount`, `adjList`) and procedural functions that intermingled graph algorithms with console printing. The refactored code encapsulates network state inside the `Network` class with `private` members, exposes a clean public interface, uses typed result objects (`RouteResult`, `ConnectionResult`), and separates UI concerns into `NetworkApp`.
+Dijkstra's algorithm finds the shortest path between a source router and all other routers in a weighted graph with non-negative edge weights:
 
-### Q2: Why is `Edge` defined as a `struct` instead of a `class`?
-**A:** In C++, `struct` members are public by default. `Edge` is a Plain Old Data (POD) record holding only destination ID and cost with no invariants to protect. Wrapping it in a `class` with private fields and trivial getters/setters would add boilerplate without providing any encapsulation benefit.
+1. **Initialization:**
+   - Set distance to the source router as `0`.
+   - Set all other router distances to infinity (`INF = 1,000,000,000`).
+   - Push `(0, source)` into a min-priority queue (`priority_queue` with `greater<pair<int, int>>`).
+2. **Min-Distance Selection:**
+   - Extract the router `u` with the smallest tentative distance.
+   - If `u` has already been visited, skip it. Otherwise, mark `u` as visited.
+   - If `u` is the destination router, stop early.
+3. **Edge Relaxation:**
+   - For every neighbor `v` of `u` with link cost `w`:
+     - If $\text{distance}[u] + w < \text{distance}[v]$, update $\text{distance}[v] = \text{distance}[u] + w$.
+     - Set $\text{parent}[v] = u$ to remember how `v` was reached.
+     - Push `(distance[v], v)` into the priority queue.
+4. **Path Reconstruction:**
+   - Starting from `destination`, trace backwards using the `parent` array until reaching `source`.
+   - Reverse the sequence to obtain the path from source to destination.
 
-### Q3: Why didn't you create a separate `Router` class?
-**A:** In this simulation, routers have no unique behavior or state other than an integer ID (`1, 2, ..., N`). Creating a `class Router` would either be a pointless one-line wrapper around an integer or an unnecessary heap-allocated container that harms cache locality without adding any architectural benefit.
+---
 
-### Q4: Why are inheritance and polymorphism not used?
-**A:** Inheritance models "is-a" relationships where distinct subtypes exist. In this simulator, all routers and links are homogeneous. Adding abstract classes or virtual methods would introduce vtable overhead and artificial complexity, violating the YAGNI principle.
+## 7. Time and Space Complexity
 
-### Q5: How does Dijkstra's algorithm work with an STL priority queue?
-**A:** C++ `std::priority_queue` is a max-heap by default. By declaring it as `std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<pair<int, int>>>`, it operates as a min-heap, allowing $\mathcal{O}(\log V)$ extraction of the unvisited router with the minimum tentative distance.
+| Operation | Time Complexity | Space Complexity |
+| :--- | :--- | :--- |
+| **Add Router** | $\mathcal{O}(1)$ amortized | $\mathcal{O}(1)$ |
+| **Connect Routers** | $\mathcal{O}(\text{deg}(u))$ | $\mathcal{O}(1)$ |
+| **Display Network** | $\mathcal{O}(V + E)$ | $\mathcal{O}(1)$ |
+| **Find Shortest Route** | $\mathcal{O}((V + E) \log V)$ | $\mathcal{O}(V)$ auxiliary |
 
-### Q6: What is edge relaxation in Dijkstra's algorithm?
-**A:** Relaxation is the step where we check if traversing through the current router $u$ provides a shorter path to neighbor $v$ than previously known:
-$$\text{if } (\text{distance}[u] + \text{cost} < \text{distance}[v]) \implies \text{distance}[v] = \text{distance}[u] + \text{cost}$$
+*$V$ = number of routers, $E$ = number of links, $\text{deg}(u)$ = number of connections attached to router $u$.*
 
-### Q7: How is the shortest path reconstructed after Dijkstra finishes?
-**A:** We maintain a `parent` array where `parent[v] = u` records that router $u$ is the immediate predecessor of router $v$ on the shortest path. Once the destination is reached, we backtrack from destination to source using `parent`, and then reverse the vector using `std::reverse`.
+---
 
-### Q8: What is the time and space complexity of Dijkstra's algorithm in this project?
-**A:** Time complexity is $\mathcal{O}((V + E) \log V)$ using a binary min-priority queue. Space complexity is $\mathcal{O}(V + E)$ for the adjacency list and $\mathcal{O}(V)$ auxiliary memory for the `distance`, `visited`, and `parent` arrays.
+## 8. Compilation & Execution Instructions
 
-### Q9: How is invalid input handled when a user enters non-numeric characters?
-**A:** `NetworkApp::readInt` checks `std::cin >> value`. If it fails, `cin.fail()` is triggered, `std::cin.clear()` resets the stream error state, and a dummy string consumes the invalid characters, preventing terminal lockup.
+The project uses standard C++17 and standard libraries.
 
-### Q10: How does the system detect unreachable routers?
-**A:** All distances are initialized to a sentinel infinity value (`INF = 1,000,000,000`). If `distance[destination]` remains `INF` after Dijkstra's algorithm finishes, no connected path exists between source and destination, and `RouteResult.routeExists` is set to `false`.
+### Compile the Application:
+```bash
+g++ -std=c++17 -Wall -Wextra -Wpedantic main.cpp Network.cpp -o NetRouteSimulator
+```
+
+### Run on Windows:
+```powershell
+.\NetRouteSimulator.exe
+```
+
+### Run on Linux / macOS:
+```bash
+./NetRouteSimulator
+```
+
+### Run Automated Tests:
+```bash
+g++ -std=c++17 -Wall -Wextra -Wpedantic tests.cpp Network.cpp -o tests
+.\tests.exe
+```
+
+---
+
+## 9. Viva Questions and Answers
+
+1. **Q: What OOP concepts did you implement in this project?**
+   - **A:** Encapsulation and Data Hiding (private data members `routerCount` and `adjList` in `Network`), Abstraction (public interface separating how the network is used from its internal data structures), and Separation of Concerns (`main()` runs the menu while `Network` handles routing logic).
+
+2. **Q: Why is `Edge` a struct and not a class?**
+   - **A:** `Edge` is a simple data record that only holds two variables (`to` and `cost`). Since it has no private state or invariant logic to protect, using a `struct` with public members is clean and idiomatic C++.
+
+3. **Q: Why didn't you create a separate `Router` class?**
+   - **A:** In this simulation, routers only have integer IDs (`1, 2, ...`) without any unique state or methods. Creating a `Router` class would be a redundant wrapper around an integer without adding any architectural benefit.
+
+4. **Q: Why are inheritance and polymorphism not used?**
+   - **A:** All routers and links follow the exact same rules. There are no specialized subtypes (e.g., wireless routers) or alternative routing algorithms. Adding abstract classes or virtual functions would be unnecessary overengineering.
+
+5. **Q: Why do we use `using namespace std;`?**
+   - **A:** It imports all standard-library names into the global scope, allowing us to write clean and concise code like `cout`, `cin`, and `vector` instead of repeatedly prefixing `std::`.
+
+6. **Q: What data structure is used to represent the network?**
+   - **A:** An Adjacency List using `vector<vector<Edge>>`, where `adjList[u]` contains all connections attached to router `u`. It uses $\mathcal{O}(V + E)$ space, which is optimal for sparse network topologies.
+
+7. **Q: Why is `priority_queue` declared with `greater`?**
+   - **A:** By default, C++ `std::priority_queue` is a max-heap. In Dijkstra's algorithm, we need the router with the smallest distance first, so we pass `greater<pair<int, int>>` to make it a min-heap.
+
+8. **Q: How does the program detect unreachable routers?**
+   - **A:** All router distances are initialized to infinity (`INF = 1000000000`). If `distance[destination]` remains `INF` after Dijkstra's algorithm finishes, no path connects the source to the destination.
