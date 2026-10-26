@@ -1,484 +1,199 @@
-# NetRoute Simulator
+# NETROUTE SIMULATOR
 
-### CLI-Based Network Routing Simulator in C++
-
----
-
-## Table of Contents
-1. [Project Overview](#project-overview)
-2. [Project Objectives](#project-objectives)
-3. [Features](#features)
-4. [Technologies Used](#technologies-used)
-5. [Project Directory Structure](#project-directory-structure)
-6. [Architecture & Class Responsibilities](#architecture--class-responsibilities)
-7. [How the Network is Represented](#how-the-network-is-represented)
-8. [How Dijkstra's Algorithm Works](#how-dijkstras-algorithm-works)
-9. [Packet Simulation](#packet-simulation)
-10. [Requirements & Installation](#requirements--installation)
-11. [Compilation Instructions](#compilation-instructions)
-12. [Running the Application](#running-the-application)
-13. [Usage Walkthrough](#usage-walkthrough)
-14. [Example Output](#example-output)
-15. [STL Containers Used](#stl-containers-used)
-16. [Complexity Analysis](#complexity-analysis)
-17. [Testing](#testing)
-18. [Limitations](#limitations)
-19. [Future Improvements](#future-improvements)
-20. [Author & Academic Use](#author--academic-use)
+A lightweight, beginner-friendly CLI-based Network Routing Simulator written in standard C++17. Designed specifically for college Object-Oriented Programming (OOP) and Data Structures vivas and demonstrations.
 
 ---
 
-## Project Overview
+## 1. Project Overview
 
-**NetRoute Simulator** is an interactive, command-line computer network simulation developed in modern C++17. It models a network topology consisting of routers connected by weighted bidirectional links, computes optimal forwarding paths using Dijkstra's shortest-path algorithm, and simulates hop-by-hop packet transmissions.
+**NetRoute Simulator** models a computer network of routers connected by bidirectional, weighted communication links. It allows users to:
+1. Dynamically add routers with automatically assigned integer IDs (`1, 2, 3, ...`).
+2. Establish communication links between routers with custom positive costs.
+3. Visualize the entire network topology, including connected and isolated routers.
+4. Calculate and display the optimal shortest path and minimum total transmission cost between any two routers using **Dijkstra's Algorithm**.
 
-> **Important Note:** This software is a logical discrete-event simulation designed for educational purposes. It does not open raw network sockets, interact with operating system routing tables, or transmit physical packets over the internet.
-
----
-
-## Project Objectives
-
-This project was developed for an undergraduate Object-Oriented Programming (OOP) curriculum to demonstrate:
-- **Object-Oriented Design (OOD):** Designing discrete, single-responsibility classes (`Router`, `Network`, `RoutingEngine`, `Packet`, `PacketSimulator`, `NetworkSimulator`) with strict encapsulation and clean abstractions.
-- **Graph Modeling:** Modeling dynamic networks using adjacency lists backed by standard associative containers.
-- **Algorithm Implementation:** Applying Dijkstra's algorithm with a min-priority queue and predecessor mapping to solve single-source shortest path problems.
-- **Standard Template Library (STL):** Utilizing modern C++ containers (`std::vector`, `std::unordered_map`, `std::priority_queue`, `std::pair`) and algorithms (`std::sort`, `std::remove_if`, `std::reverse`).
-- **Modular Software Engineering:** Structuring a multi-file project with separated interfaces (`include/*.h`) and implementations (`src/*.cpp`), proper header inclusion rules, and zero circular dependencies.
+The project is intentionally written without overengineering or complicated abstractions, making every line of code easy to read, understand, and defend during an oral examination (viva).
 
 ---
 
-## Features
+## 2. Menu Options
 
-- **Router Management:**
-  - Add routers with unique alphanumeric identifiers.
-  - Remove routers with automatic cascading cleanup of all incident links (no dangling links).
-  - Toggle router operational status (`ACTIVE` vs. `INACTIVE`) to model hardware/interface downtime.
-- **Connection & Topology Control:**
-  - Establish bidirectional weighted links with configurable positive integer costs.
-  - Reject invalid operations: self-links ($A \leftrightarrow A$), non-positive costs ($\le 0$), duplicate links, and links referencing nonexistent routers.
-  - Disconnect existing links with validation.
-  - Display alphabetical, human-readable adjacency lists showing neighbors, link costs, and operational states.
-- **Dijkstra Shortest-Path Routing:**
-  - Compute the lowest-cost path between any two active routers.
-  - Track complete router-by-router trajectory, total accumulated cost, and edge hop count.
-  - Automatic rerouting around inactive nodes or broken connections.
-  - Graceful reporting of unreachable destinations and nonexistent endpoints.
-- **Single-Source Routing Table Generation:**
-  - Compute minimum costs and immediate next hops from a selected source router to all other nodes in the network in a single Dijkstra traversal.
-  - Clearly display `Local (Self)`, `Reachable`, or `UNREACHABLE` status.
-- **Packet Transmission Simulation:**
-  - Generate simulated packets with monotonic, auto-incrementing tracking IDs starting at `1001`.
-  - Simulate hop-by-hop forwarding visualization (`A -> C`, `C -> B`, `B -> D`).
-  - Track packet states across their lifecycle: `CREATED`, `IN_TRANSIT`, `DELIVERED`, and `FAILED`.
-  - Record the actual path followed and failure diagnostics (e.g., `"No route available"`).
-- **Packet History & Metrics:**
-  - Chronological history of all delivered and failed transmissions.
-  - Comprehensive network statistics: router count, unique link count, packet delivery success rate, and average hop count with division-by-zero protection.
-- **Demonstration Benchmark Network:**
-  - Built-in option to load a standardized 4-node topology ($A, B, C, D$) to demonstrate cost versus hop-count optimization.
+The application presents a clean and simple menu:
 
----
-
-## Technologies Used
-
-- **Language:** Standard C++17 (ISO/IEC 14882:2017)
-- **Standard Library:** Containers (`<vector>`, `<unordered_map>`, `<queue>`, `<string>`, `<utility>`), Algorithms (`<algorithm>`), I/O & Formatting (`<iostream>`, `<iomanip>`), and Limits (`<limits>`)
-- **Compiler:** `g++` (GCC) with `-Wall -Wextra -pedantic` flags
-- **Interface:** Interactive Console / Command-Line Interface (CLI)
-
----
-
-## Project Directory Structure
-
-```
-NetRouteSimulator/
-├── include/
-│   ├── Network.h           # Network class declaration and OperationResult struct
-│   ├── NetworkSimulator.h  # Application controller and CLI menu coordinator
-│   ├── Packet.h            # Packet class declaration and PacketStatus enum
-│   ├── PacketSimulator.h   # Packet lifecycle, forwarding engine, and metrics
-│   ├── Router.h            # Router node class declaration
-│   └── RoutingEngine.h     # RoutingEngine declaration and RouteResult struct
-├── src/
-│   ├── main.cpp            # Minimal entry point (instantiates and runs controller)
-│   ├── Network.cpp         # Graph storage, connection validation, topology display
-│   ├── NetworkSimulator.cpp# Menu loop, user I/O, and input validation utilities
-│   ├── Packet.cpp          # Packet member definitions and status-to-string conversion
-│   ├── PacketSimulator.cpp # Packet forwarding simulation, history, and statistics
-│   ├── Router.cpp          # Router accessors and state mutators
-│   └── RoutingEngine.cpp   # Dijkstra's algorithm and routing table generation
-├── README.md               # Complete project documentation
-└── .gitignore              # Git ignore rules for build artifacts and executables
+```text
+========================================
+         NETROUTE SIMULATOR
+========================================
+1. Add Router
+2. Connect Routers
+3. Display Network
+4. Find Shortest Route
+0. Exit
+========================================
+Enter your choice: 
 ```
 
-### File Responsibilities
+---
 
-| File | Type | Responsibility |
-| :--- | :--- | :--- |
-| `include/Router.h` / `src/Router.cpp` | Class | Represents a network node; encapsulates router ID and operational state (`active_`). |
-| `include/Network.h` / `src/Network.cpp` | Class | Maintains graph topology (nodes and adjacency list); enforces link validation and graph integrity. |
-| `include/RoutingEngine.h` / `src/RoutingEngine.cpp` | Class | Algorithmic engine; executes Dijkstra's shortest-path search and single-source routing table generation. |
-| `include/Packet.h` / `src/Packet.cpp` | Class | Entity modeling a data packet; tracks ID, endpoints, actual path, status, and cost. |
-| `include/PacketSimulator.h` / `src/PacketSimulator.cpp` | Class | Manages packet generation, hop-by-hop transmission simulation, history storage, and metrics. |
-| `include/NetworkSimulator.h` / `src/NetworkSimulator.cpp` | Class | Top-level coordinator; handles menu display, input parsing, error handling, and delegation. |
-| `src/main.cpp` | Entry | Minimal executable entry point containing only `main()`. |
+## 3. Features & Validation Rules
+
+- **Option 1: Add Router**
+  - Adds a new router node to the network.
+  - Automatically generates an incremental integer ID (`1, 2, 3...`).
+  - Resizes the adjacency list to accommodate new connections.
+
+- **Option 2: Connect Routers**
+  - Prompts for two router IDs and a link cost.
+  - Links are bidirectional (traffic can flow in both directions).
+  - **Validation checks:**
+    - Rejects IDs of routers that do not exist.
+    - Rejects self-loops (connecting a router to itself).
+    - Rejects non-positive link costs ($\le 0$).
+    - Rejects duplicate connections between already connected routers.
+
+- **Option 3: Display Network**
+  - Displays each router along with its connected neighbors and corresponding link costs.
+  - Clearly identifies isolated routers that have no connections (`[No connections (Isolated)]`).
+
+- **Option 4: Find Shortest Route**
+  - Prompts for source and destination router IDs.
+  - Uses Dijkstra's algorithm to compute the path with the minimum total cost.
+  - Prints the complete hop sequence (e.g., `1 -> 2 -> 3`) and total cost.
+  - Detects unreachable destinations and displays `"No route exists between these routers."`.
+
+- **Option 0: Exit**
+  - Gracefully terminates the program.
 
 ---
 
-## Architecture & Class Responsibilities
+## 4. How the Network is Represented
 
-The application follows the **Single Responsibility Principle (SRP)**. Subsystems are loosely coupled through clean public interfaces:
+The network is represented as an undirected graph using an **Adjacency List**:
 
-```
-                      ┌──────────────────────┐
-                      │     src/main.cpp     │
-                      └──────────┬───────────┘
-                                 │
-                                 ▼
-                     ┌────────────────────────┐
-                     │    NetworkSimulator    │  (UI Controller & Menu Loop)
-                     └───┬────────┬────────┬──┘
-                         │        │        │
-         ┌───────────────┘        │        └──────────────┐
-         ▼                        ▼                       ▼
-  ┌─────────────┐       ┌───────────────────┐    ┌─────────────────┐
-  │   Network   │       │   RoutingEngine   │    │ PacketSimulator │
-  └──────┬──────┘       └─────────┬─────────┘    └────────┬────────┘
-         │                        │                       │
-         ▼                        │                       ▼
-  ┌─────────────┐                 │                 ┌───────────┐
-  │   Router    │                 │                 │  Packet   │
-  └─────────────┘                 │                 └───────────┘
-         ▲                        │
-         └────────────────────────┴───────────────────────┘
-           (RoutingEngine & PacketSimulator query Network)
-```
-
-### Key OOP Principles Demonstrated
-- **Encapsulation:** Class attributes (`routers_`, `adjacencyList_`, `packetHistory_`, `id_`, `active_`) are `private`. External classes cannot mutate data structures directly; all mutations occur through validated member methods (`addRouter`, `connectRouters`, `recordHop`).
-- **Separation of Concerns:**
-  - `Network` knows *how to store and validate the graph*, but has no awareness of console menus, Dijkstra's algorithm, or packet forwarding.
-  - `RoutingEngine` knows *how to compute shortest paths*, but does not store graph data or print menus.
-  - `PacketSimulator` knows *how to simulate transmission and log statistics*, but delegates route discovery to `RoutingEngine`.
-  - `NetworkSimulator` manages *user interaction and input sanitization*, delegating work to domain classes.
-
----
-
-## How the Network is Represented
-
-The network is modeled as a weighted undirected graph using an **Adjacency List** stored in:
 ```cpp
-std::unordered_map<std::string, std::vector<std::pair<std::string, int>>> adjacencyList_;
+struct Edge {
+    int to;    // Neighbor router ID
+    int cost;  // Link cost (weight)
+};
+
+int routerCount = 0;
+vector<vector<Edge>> adjList;
 ```
 
-### Structure:
-- **Key (`std::string`):** The unique ID of the source router (e.g., `"A"`).
-- **Value (`std::vector<std::pair<std::string, int>>`):** A list of neighbor connections. Each `pair` stores:
-  - `first` (`std::string`): Neighbor router ID.
-  - `second` (`int`): Link traversal cost / weight.
-
-### Example Graph:
-```
-       (4)
-  [A]-------[B]
-   |  \     /|
-(2)|   (1) / |(3)
-   |    \ /  |
-  [C]----+  [D]
-   |         |
-   +---(7)---+
-```
-
-### Representation in Memory:
-```
-Router A -> [ (B, 4), (C, 2) ]
-Router B -> [ (A, 4), (C, 1), (D, 3) ]
-Router C -> [ (A, 2), (B, 1), (D, 7) ]
-Router D -> [ (B, 3), (C, 7) ]
-```
-
-When connecting $A$ and $B$ with cost $4$, bidirectional entries are created: $(B, 4)$ is added to $A$'s list, and $(A, 4)$ is added to $B$'s list.
+### Why Adjacency List?
+- **Memory Efficient:** Takes $\mathcal{O}(V + E)$ space instead of $\mathcal{O}(V^2)$ needed by an adjacency matrix.
+- **Fast Traversal:** Iterating over the neighbors of a router only visits actual existing connections.
 
 ---
 
-## How Dijkstra's Algorithm Works
+## 5. How Dijkstra's Algorithm Works
 
-Dijkstra's algorithm finds the shortest path between a source router and destinations in a weighted graph with non-negative edge weights.
+Dijkstra's algorithm finds the shortest path between a source router and all other routers in a weighted graph with non-negative edge weights:
 
-### Step-by-Step Procedure:
-1. **Endpoint Validation:** Verify that both source and destination routers exist in the network and are currently `ACTIVE`.
-2. **Initialization:**
-   - Initialize tentative distances: $\text{dist}[u] = \infty$ for all $u \in V$.
-   - Set $\text{dist}[\text{source}] = 0$.
-   - Initialize an empty predecessor map: $\text{predecessor}[u] = \text{None}$.
-3. **Priority Queue Population:**
-   - Push $(\text{cost} = 0, \text{node} = \text{source})$ into a min-priority queue (`std::priority_queue` configured with `std::greater`).
-4. **Iterative Extraction & Relaxation:**
-   - Pop the router $u$ with the lowest tentative cost $(d, u)$.
-   - **Stale Entry Check:** If $d > \text{dist}[u]$, discard this entry (handles duplicate queue insertions in $O(1)$).
-   - **Early Exit:** If $u == \text{destination}$, stop further exploration.
-   - For each neighbor $v$ of $u$ with link cost $w$:
-     - Check if $v$ is `ACTIVE`; skip if inactive.
-     - Calculate $\text{newDist} = \text{dist}[u] + w$.
-     - If $\text{newDist} < \text{dist}[v]$:
-       - Update $\text{dist}[v] = \text{newDist}$.
-       - Update $\text{predecessor}[v] = u$.
-       - Push $(\text{newDist}, v)$ into the priority queue.
-5. **Path Reconstruction:**
-   - If $\text{dist}[\text{destination}] == \infty$, return `found = false`.
-   - Otherwise, trace backward from $\text{destination}$ through $\text{predecessor}$ until $\text{source}$ is reached.
-   - Reverse the sequence to produce the source-to-destination path.
-   - Hop count is calculated as $\text{path.size}() - 1$.
-
-### Why Non-Negative Weights Are Required
-Dijkstra's algorithm assumes that once a node is extracted from the min-priority queue, its shortest distance is finalized. A negative edge weight would violate this greedy invariant because a subsequent path could reduce an already "finalized" cost. NetRoute Simulator strictly validates that all link costs are positive integers ($> 0$).
-
-### Time Complexity
-Using an adjacency list and a binary min-heap (`std::priority_queue`):
-$$\mathcal{O}((V + E) \log V)$$
-where $V$ is the number of routers and $E$ is the number of links.
+1. **Initialization:**
+   - Set the distance to the source router as `0`.
+   - Set all other router distances to infinity (`INF = 1,000,000,000`).
+   - Push `(0, source)` into a min-priority queue (`std::priority_queue` with `std::greater`).
+2. **Min-Distance Selection:**
+   - Extract the router `u` with the smallest tentative distance from the queue.
+   - If `u` has already been visited, skip it. Otherwise, mark `u` as visited.
+   - If `u` is the destination router, we can stop early.
+3. **Edge Relaxation:**
+   - For every neighbor `v` of `u` with link cost `w`:
+     - If $\text{distance}[u] + w < \text{distance}[v]$, update $\text{distance}[v] = \text{distance}[u] + w$.
+     - Set $\text{parent}[v] = u$ to remember how we reached `v`.
+     - Push `(distance[v], v)` into the priority queue.
+4. **Path Reconstruction:**
+   - Starting from `destination`, trace backwards using the `parent` array until reaching `source`.
+   - Reverse the sequence to obtain the path from source to destination.
 
 ---
 
-## Packet Simulation
+## 6. Step-by-Step Example Walkthrough
 
-Packet transmission is simulated logically through discrete state transitions:
+### Scenario:
+1. Add 3 routers: Router 1, Router 2, Router 3.
+2. Connect Router 1 and Router 2 with cost 4.
+3. Connect Router 2 and Router 3 with cost 5.
+4. Connect Router 1 and Router 3 with cost 12.
 
+### Graph Diagram:
+```text
+         (4)
+    [1]-------[2]
+      \       /
+  (12) \     / (5)
+        \   /
+         [3]
 ```
-[Packet Created: ID 1001]
-          │
-          ▼
-   Query RoutingEngine
-          │
-     ┌────┴────────────────────────┐
-     ▼                             ▼
-[Route Found]              [No Route Exists]
-     │                             │
-     ▼                             ▼
-Status: IN_TRANSIT           Status: FAILED
-Simulate Hops:               Reason: "No route available"
-  A -> C                     Log to History
-  C -> B                     Increment packetsFailed_
-  B -> D
-Record actual path
-     │
-     ▼
-Status: DELIVERED
-Set total cost & hops
-Log to History
-Increment packetsDelivered_
-```
+
+### Finding Shortest Route from Router 1 to Router 3:
+- Direct path: $1 \rightarrow 3$ (Cost = 12).
+- Indirect path via Router 2: $1 \rightarrow 2 \rightarrow 3$ (Cost = $4 + 5 = 9$).
+- Dijkstra's algorithm selects $1 \rightarrow 2 \rightarrow 3$ because $9 < 12$.
+- Output:
+  ```text
+  ========================================
+              SHORTEST ROUTE
+  ========================================
+  Source Router: 1
+  Destination Router: 3
+  Shortest Path: 1 -> 2 -> 3
+  Total Cost: 9
+  ========================================
+  ```
 
 ---
 
-## Requirements & Installation
+## 7. Compilation & Execution
 
-### Requirements
-- **Compiler:** `g++` supporting C++17 or later (GCC 7+).
-- **Environment:** Windows (MinGW-w64 / MSYS2), Linux (Ubuntu, Debian, Fedora), or macOS (Clang with C++17 support).
-- **Shell:** Command Prompt, PowerShell, or Bash.
+The entire project is self-contained in `main.cpp` using only the C++ Standard Library. No external build systems or dependencies are required.
 
-### Verification
-Check compiler support by running:
+### Compile with strict flags:
 ```bash
-g++ --version
+g++ -std=c++17 -Wall -Wextra -Wpedantic main.cpp -o NetRouteSimulator
 ```
 
----
-
-## Compilation Instructions
-
-The project uses standard C++ header/source file organization and compiles directly with `g++` without requiring CMake, Makefiles, or third-party tools.
-
-### Compilation Command:
-```bash
-g++ -std=c++17 -Wall -Wextra -pedantic -Iinclude src/main.cpp src/Router.cpp src/Network.cpp src/RoutingEngine.cpp src/Packet.cpp src/PacketSimulator.cpp src/NetworkSimulator.cpp -o NetRouteSimulator
-```
-
-### Compiler Flag Explanations:
-- `-std=c++17`: Enables ISO C++17 standard features.
-- `-Wall -Wextra -pedantic`: Enables strict compiler diagnostic warnings.
-- `-Iinclude`: Adds the `include/` directory to the compiler's header search path.
-- `src/*.cpp`: Compiles each implementation translation unit.
-- `-o NetRouteSimulator`: Sets the output binary name.
-
----
-
-## Running the Application
-
-### Windows (PowerShell / Command Prompt):
+### Run on Windows:
 ```powershell
 .\NetRouteSimulator.exe
 ```
 
-### Linux / macOS / WSL:
+### Run on Linux / macOS:
 ```bash
 ./NetRouteSimulator
 ```
 
 ---
 
-## Usage Walkthrough
+## 8. Viva Questions and Answers
 
-1. **Launch the simulator:** Run `./NetRouteSimulator` or `.\NetRouteSimulator.exe`.
-2. **Load sample network or add routers manually:**
-   - Select Option `12` to load the standard sample topology ($A, B, C, D$).
-   - Or select Option `1` to add routers $A, B, C, D$ manually.
-3. **Connect routers (if creating manually):**
-   - Option `3` $\rightarrow$ Connect $A \leftrightarrow B$ (Cost: 4)
-   - Option `3` $\rightarrow$ Connect $A \leftrightarrow C$ (Cost: 2)
-   - Option `3` $\rightarrow$ Connect $C \leftrightarrow B$ (Cost: 1)
-   - Option `3` $\rightarrow$ Connect $B \leftrightarrow D$ (Cost: 3)
-   - Option `3` $\rightarrow$ Connect $C \leftrightarrow D$ (Cost: 7)
-4. **Display topology:**
-   - Option `5` displays all nodes, active states, and neighbors.
-5. **Find shortest route:**
-   - Option `6` $\rightarrow$ Enter Source `A` and Destination `D`.
-   - Output shows $A \rightarrow C \rightarrow B \rightarrow D$ with Total Cost 6 and 3 Hops.
-6. **Display routing table:**
-   - Option `7` $\rightarrow$ Enter Source `A` to view optimal next hops to all destinations.
-7. **Send simulated packet:**
-   - Option `8` $\rightarrow$ Source `A`, Destination `D`.
-   - Observes hop-by-hop forwarding visualization.
-8. **View history and statistics:**
-   - Option `9` views logged packet history.
-   - Option `10` views network delivery percentage and average hops.
-9. **Exit:** Option `0` exits cleanly.
+1. **Q: What data structure is used to represent the network?**
+   - **A:** An Adjacency List using `vector<vector<Edge>>`, where each router ID indexes a vector of `Edge` structs containing the neighbor ID and link cost.
 
----
+2. **Q: Why is an adjacency list preferred over an adjacency matrix?**
+   - **A:** An adjacency list uses $\mathcal{O}(V + E)$ space, which is optimal for sparse graphs, whereas an adjacency matrix uses $\mathcal{O}(V^2)$ space regardless of the number of links.
 
-## Example Output
+3. **Q: What is the purpose of Dijkstra's algorithm?**
+   - **A:** It finds the shortest (lowest total cost) path from a single source node to all other nodes in a graph with non-negative edge weights.
 
-### Finding Shortest Route (Option 6):
-```
-========================================
-         SHORTEST ROUTE
-========================================
-Source Router: A
-Destination Router: D
+4. **Q: Why do we use `priority_queue` with `greater`?**
+   - **A:** By default, C++'s `std::priority_queue` is a max-heap. Using `greater<pair<int, int>>` turns it into a min-heap so that the router with the smallest tentative distance is popped first.
 
-Shortest Route: A -> C -> B -> D
-Total Cost: 6
-Number of Hops: 3
-Status: Route Found
-========================================
-```
+5. **Q: What is "relaxation" in Dijkstra's algorithm?**
+   - **A:** Relaxation is the process of checking whether traveling through the current router `u` gives a shorter path to neighbor `v` than previously recorded, i.e., `if (distance[u] + cost < distance[v])`.
 
-### Single-Source Routing Table (Option 7):
-```
-======================================================================
-               ROUTING TABLE FOR ROUTER [A]
-======================================================================
-Destination    | Total Cost     | Next Hop       | Status
-----------------------------------------------------------------------
-A              | 0              | A              | Local (Self)
-B              | 3              | C              | Reachable
-C              | 2              | C              | Reachable
-D              | 6              | C              | Reachable
-======================================================================
-```
+6. **Q: How is the shortest path reconstructed?**
+   - **A:** We maintain a `parent` array. When relaxing an edge to router `v` from router `u`, we record `parent[v] = u`. After Dijkstra finishes, we backtrack from destination to source using `parent`, and reverse the list.
 
-### Packet Simulation (Option 8):
-```
-========================================
-           PACKET SIMULATION
-========================================
-Packet ID: 1001
-Source: A
-Destination: D
+7. **Q: Can Dijkstra's algorithm handle negative link costs?**
+   - **A:** No. Dijkstra greedily assumes that once a node is visited, its shortest distance is finalized. Negative weights violate this assumption. For negative weights, the Bellman-Ford algorithm must be used.
 
-Forwarding:
-A -> C
-C -> B
-B -> D
+8. **Q: What is the time complexity of this Dijkstra implementation?**
+   - **A:** $\mathcal{O}((V + E) \log V)$ using a binary min-priority queue, where $V$ is the number of routers and $E$ is the number of links.
 
-Actual Path: A -> C -> B -> D
-Total Cost: 6
-Number of Hops: 3
-Status: DELIVERED
-========================================
-```
+9. **Q: How does the program detect that a destination is unreachable?**
+   - **A:** All distances are initialized to infinity (`INF = 1000000000`). If `distance[destination]` remains `INF` after Dijkstra's algorithm terminates, no path connects the source to the destination.
 
-### Network Statistics (Option 10):
-```
-========================================
-         NETWORK STATISTICS
-========================================
-Total Routers               : 4
-Total Bidirectional Links   : 5
-Total Packets Created       : 1
-Successfully Delivered      : 1
-Failed Packets              : 0
-Delivery Success Rate       : 100.00%
-Average Delivered Hops      : 3.00
-========================================
-```
-
----
-
-## STL Containers Used
-
-| Container | Header | Purpose in Project | Rationale |
-| :--- | :--- | :--- | :--- |
-| `std::unordered_map` | `<unordered_map>` | Router lookup table (`routers_`), Adjacency list (`adjacencyList_`), Distance table (`dist`), Predecessor map (`predecessor`) | Provides average $\mathcal{O}(1)$ key-value lookups and insertions by router ID string. |
-| `std::vector` | `<vector>` | Neighbor list (`std::vector<std::pair<...>>`), Path reconstruction (`path_`), Packet history (`packetHistory_`) | Provides dynamic contiguous memory with $\mathcal{O}(1)$ amortized append and sequential cache locality. |
-| `std::priority_queue` | `<queue>` | Dijkstra min-priority queue (`std::greater` comparator) | Allows $\mathcal{O}(\log V)$ extraction of the node with the minimum tentative distance. |
-| `std::pair` | `<utility>` | Adjacency edge `(neighborId, cost)`, Dijkstra heap element `(cost, routerId)` | Lightweight tuple pairing two related values without defining custom boilerplate structs. |
-| `std::string` | `<string>` | Router IDs, messages, endpoints | Safe dynamic character string handling. |
-
----
-
-## Complexity Analysis
-
-| Operation | Time Complexity | Space Complexity | Description |
-| :--- | :--- | :--- | :--- |
-| **Add Router** | $\mathcal{O}(1)$ avg | $\mathcal{O}(1)$ | Hash map insertion into `routers_` and `adjacencyList_`. |
-| **Remove Router** | $\mathcal{O}(V + E)$ | $\mathcal{O}(1)$ aux | Erases router and searches adjacency lists to remove incident links. |
-| **Connect Routers** | $\mathcal{O}(\text{deg}(u))$ | $\mathcal{O}(1)$ | Checks for duplicate link and appends to neighbor vectors. |
-| **Disconnect Routers**| $\mathcal{O}(\text{deg}(u) + \text{deg}(v))$ | $\mathcal{O}(1)$ | Finds and erases edge from neighbor vectors. |
-| **Display Topology** | $\mathcal{O}(V \log V + E \log E)$ | $\mathcal{O}(V + E)$ | Sorts router IDs and neighbor lists alphabetically for display. |
-| **Shortest Route (Dijkstra)** | $\mathcal{O}((V + E) \log V)$ | $\mathcal{O}(V)$ | Min-heap Dijkstra traversal with edge relaxation. |
-| **Path Reconstruction** | $\mathcal{O}(H)$ | $\mathcal{O}(H)$ | Traces predecessor chain backward ($H$ = hop count $\le V$). |
-| **Routing Table** | $\mathcal{O}((V + E) \log V + V \cdot H)$ | $\mathcal{O}(V)$ | Single Dijkstra pass followed by predecessor next-hop traces. |
-| **Packet Forwarding**| $\mathcal{O}((V + E) \log V + H)$ | $\mathcal{O}(H)$ | Computes path, prints forwarding hops, and records visited nodes. |
-| **Packet History Display** | $\mathcal{O}(P \cdot H)$ | $\mathcal{O}(1)$ aux | Iterates over $P$ stored packets and prints their path sequences. |
-
----
-
-## Testing
-
-### Automated CLI Verification Suite
-The project was tested using automated command sequences piped into standard input:
-- **Router Lifecycle:** Added routers $A, B, C, D$; tested duplicate router rejection ($A$ already exists); tested empty string rejection.
-- **Connection Validation:** Connected $A \leftrightarrow B$ (cost 4); rejected duplicate link creation; rejected self-links ($A \leftrightarrow A$); rejected non-positive weights ($\le 0$).
-- **Graph Invariant Testing:** Connected multiple links to router $B$; deleted router $B$; verified that no dangling links to $B$ remained in $A$, $C$, or $D$.
-- **Pathfinding Correctness:** Verified that the lowest-cost route from $A$ to $D$ ($A \rightarrow C \rightarrow B \rightarrow D$, Cost 6, 3 Hops) was selected over the fewer-hop route ($A \rightarrow B \rightarrow D$, Cost 7, 2 Hops).
-- **Network Resilience:** Set intermediate router $C$ to `INACTIVE`; verified that Dijkstra automatically rerouted packets via $B$ ($A \rightarrow B \rightarrow D$).
-- **Error Handling:** Tested packet transmission to unreachable disconnected nodes; verified `Status: FAILED` and `Reason: No route available`. Tested invalid alphanumeric menu inputs; verified clean recovery without infinite loops or crashes.
-
----
-
-## Limitations
-
-- **Logical Simulation Only:** Does not bind network sockets, parse physical Ethernet frames, or interface with real network cards.
-- **In-Memory Volatility:** Network topology, packet history, and statistics are stored in RAM and reset when the application terminates (no file persistence/database).
-- **Single-Threaded:** Packet forwarding is simulated sequentially; concurrent packet collisions, queue delays, and bandwidth throttling are not modeled.
-- **Non-Negative Link Costs:** Relies on Dijkstra's algorithm; graphs with negative edge weights are not supported (and prevented by input validation).
-
----
-
-## Future Improvements
-
-- **Serialization & Persistence:** Save and load network topologies and routing configurations to JSON or binary files.
-- **Dynamic Link Congestion:** Simulate link latency and queuing delay based on real-time traffic volume.
-- **Alternative Routing Protocols:** Implement Bellman-Ford (distance-vector) and Open Shortest Path First (OSPF) link-state broadcast simulations.
-- **Packet Loss Simulation:** Introduce configurable link drop probabilities and checksum corruption to model transmission errors.
-- **Graphical User Interface (GUI):** Add a visual network canvas using Qt or WebAssembly to animate packet traversals visually.
-
----
-
-## Author & Academic Use
-
-- **Project:** NetRoute Simulator
-- **Course:** Object-Oriented Programming (OOP) / Data Structures & Algorithms
-- **Purpose:** Developed strictly for academic and educational purposes to demonstrate object-oriented software engineering, graph theory, and algorithmic pathfinding in C++.
+10. **Q: Why are connections bidirectional in this project?**
+    - **A:** When connecting routers $A$ and $B$, communication can travel both ways. We add $B$ to $A$'s adjacency list, and $A$ to $B$'s adjacency list.
