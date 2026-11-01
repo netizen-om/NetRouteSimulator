@@ -87,17 +87,23 @@ Enter your choice:
 
 ## 4. Object-Oriented Architecture
 
-The project is modularized into dedicated header and implementation files:
+The project is modularized into dedicated header, implementation, and test input files:
 
 ```text
 NetRouteSimulator/
-├── Router.h           # Edge struct and Router class declaration
-├── Router.cpp         # Router class implementation
-├── Network.h          # Network class declaration
-├── Network.cpp        # Network class implementation (graph logic & algorithms)
-├── main.cpp           # CLI driver and interactive menu loop
-├── OOP_DESIGN.md      # Detailed OOP architectural specification
-└── README.md          # Comprehensive project documentation & viva guide
+├── Router.h                 # Edge struct and Router class declaration
+├── Router.cpp               # Router class implementation
+├── Network.h                # Network class declaration
+├── Network.cpp              # Network class implementation (graph logic & algorithms)
+├── main.cpp                 # CLI driver and interactive menu loop
+├── OOP_DESIGN.md            # Detailed OOP architectural specification
+├── README.md                # Comprehensive project documentation & viva guide
+└── test_inputs/             # Predefined automated CLI input test files
+    ├── basic.txt            # Basic demonstration scenario
+    ├── all_operations.txt   # Comprehensive coverage of every menu option
+    ├── edge_cases.txt       # Robustness, boundary conditions, and validation errors
+    ├── connectivity.txt     # Graph connectivity transitions (connected/partitioned)
+    └── remove_router.txt    # Router deletion, edge cleanup, and dynamic rerouting
 ```
 
 ### Class Diagram:
@@ -220,19 +226,94 @@ The project uses standard C++17 and standard library headers.
 g++ -std=c++17 -Wall -Wextra -Wpedantic main.cpp Network.cpp Router.cpp -o NetRouteSimulator
 ```
 
-### Run on Windows:
+### Run Interactively on Windows:
 ```powershell
 .\NetRouteSimulator.exe
 ```
 
-### Run on Linux / macOS:
+### Run Interactively on Linux / macOS:
 ```bash
 ./NetRouteSimulator
 ```
 
 ---
 
-## 9. Viva Questions & Answers
+## 9. Automated Testing & Verification
+
+### Running Predefined Test Scenarios
+
+The repository includes a dedicated `test_inputs/` directory containing predefined CLI test files. These allow you to execute, verify, and demonstrate all simulator features during viva examinations and demonstrations with a single command, eliminating the need to type inputs manually.
+
+#### How Input Redirection Works
+The standard C++ `cin >>` statement reads data sequentially from standard input (`stdin`). By using **input redirection** (`<` in Command Prompt / Linux, or pipe `Get-Content ... |` in PowerShell), the operating system feeds the content of a text file directly into `stdin` just as if a user typed it at the keyboard. The program consumes each menu option and its corresponding parameters, executes the logic, and terminates cleanly when it encounters choice `0` (Exit).
+
+> **Note:** Input redirection requires **zero modifications** to the C++ code. The existing implementation is tested in its exact, original form.
+
+#### What `test_inputs/` Contains
+
+| Test File | Scenario Description | Features & Behavior Verified |
+| :--- | :--- | :--- |
+| **`basic.txt`** | Basic viva demonstration | Adds 3 routers, creates bidirectional links (costs 4, 5, 12), displays topology, calculates shortest path between 1 and 3 ($1 \to 2 \to 3$ with cost 9 instead of direct 12), checks network connectivity (`CONNECTED`), and exits cleanly. |
+| **`all_operations.txt`** | Full menu coverage | Systematically tests every menu choice ($1, 2, 3, 4, 5, 6, 0$). Builds a 4-router chain, verifies route and connectivity, removes router 3, displays updated topology with isolated router 4, checks connectivity transition to `DISCONNECTED`, and verifies that path from 1 to 4 is now unreachable. |
+| **`edge_cases.txt`** | Error handling & boundaries | Validates error recovery on: empty network queries (display, connectivity, removal, route), invalid menu choices, non-existent router IDs, self-loops ($1 \to 1$), zero link cost ($\le 0$), negative link cost ($-5$), duplicate link creation, reverse duplicate link creation, identical source/destination shortest path ($1 \to 1$, cost 0), and unreachable disconnected router paths. |
+| **`connectivity.txt`** | Connectivity lifecycle (BFS) | Tests BFS graph connectivity transitions: empty network $\to$ single router (`CONNECTED`) $\to$ two isolated routers (`DISCONNECTED`) $\to$ linked pair (`CONNECTED`) $\to$ two partitioned subnets `{1,2}` and `{3,4}` (`DISCONNECTED`) $\to$ bridge link between components (`CONNECTED`). |
+| **`remove_router.txt`** | Node removal & dynamic rerouting | Builds a 4-router mesh topology, computes baseline shortest path $1 \to 2 \to 3$ (cost 7), removes transit router 2, verifies edge purging and dynamic rerouting via router 4 ($1 \to 4 \to 3$, cost 12), then removes router 4 to verify isolated nodes and path failure. |
+
+#### How to Compile the Project
+Before running any test scenario, compile the program once from the project root:
+
+```bash
+g++ -std=c++17 -Wall -Wextra -Wpedantic main.cpp Network.cpp Router.cpp -o NetRouteSimulator
+```
+
+#### How to Run Each Scenario Using a Single Command
+
+**Windows PowerShell (VS Code Terminal / PowerShell):**
+```powershell
+Get-Content test_inputs/basic.txt | .\NetRouteSimulator.exe
+Get-Content test_inputs/all_operations.txt | .\NetRouteSimulator.exe
+Get-Content test_inputs/edge_cases.txt | .\NetRouteSimulator.exe
+Get-Content test_inputs/connectivity.txt | .\NetRouteSimulator.exe
+Get-Content test_inputs/remove_router.txt | .\NetRouteSimulator.exe
+```
+
+**Windows Command Prompt (`cmd.exe`):**
+```cmd
+NetRouteSimulator.exe < test_inputs\basic.txt
+NetRouteSimulator.exe < test_inputs\all_operations.txt
+NetRouteSimulator.exe < test_inputs\edge_cases.txt
+NetRouteSimulator.exe < test_inputs\connectivity.txt
+NetRouteSimulator.exe < test_inputs\remove_router.txt
+```
+
+**Linux / macOS (Terminal):**
+```bash
+./NetRouteSimulator < test_inputs/basic.txt
+./NetRouteSimulator < test_inputs/all_operations.txt
+./NetRouteSimulator < test_inputs/edge_cases.txt
+./NetRouteSimulator < test_inputs/connectivity.txt
+./NetRouteSimulator < test_inputs/remove_router.txt
+```
+
+#### How to Create Additional Test Files
+To create custom test scenarios for specific viva questions or test cases:
+1. Create a new `.txt` file inside `test_inputs/` (e.g., `test_inputs/custom_scenario.txt`).
+2. Add numbers matching the menu sequence:
+   - To add a router, enter `1`.
+   - To connect routers, enter `2`, followed by `<router1> <router2> <cost>` (e.g., `1 2 5`).
+   - To remove a router, enter `3`, followed by `<routerID>` (e.g., `2`).
+   - To display the network, enter `4`.
+   - To query the shortest route, enter `5`, followed by `<sourceID> <destID>` (e.g., `1 3`).
+   - To check connectivity, enter `6`.
+   - Conclude every test file with `0` so the program exits cleanly without hanging.
+3. Execute your scenario:
+   ```powershell
+   Get-Content test_inputs/custom_scenario.txt | .\NetRouteSimulator.exe
+   ```
+
+---
+
+## 10. Viva Questions & Answers
 
 1. **Q: What OOP concepts are implemented in this project?**
    - **A:** 
