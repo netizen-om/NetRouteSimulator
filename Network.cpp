@@ -147,35 +147,6 @@ void Network::displayNetwork() {
     cout << "========================================\n";
 }
 
-// Find all neighbors of a router
-void Network::findNeighbors() {
-    int id;
-
-    cout << "Enter router ID: ";
-    cin >> id;
-
-    Router* router = findRouter(id);
-
-    if (router == nullptr) {
-        cout << "Error: Router does not exist.\n";
-        return;
-    }
-
-    cout << "\nNeighbors of Router " << id << ":\n";
-
-    const vector<Edge>& edges = router->getConnections();
-
-    if (edges.empty()) {
-        cout << "This router has no connections.\n";
-        return;
-    }
-
-    for (const Edge& edge : edges) {
-        cout << "Router " << edge.to
-             << " | Link Cost: " << edge.cost << "\n";
-    }
-}
-
 // Check network connectivity using BFS
 void Network::checkConnectivity() {
     if (routers.empty()) {

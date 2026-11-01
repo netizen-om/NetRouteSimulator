@@ -17,9 +17,8 @@ int main() {
         cout << "2. Connect Routers\n";
         cout << "3. Remove Router\n";
         cout << "4. Display Network\n";
-        cout << "5. Find Router Neighbors\n";
-        cout << "6. Find Shortest Route\n";
-        cout << "7. Check Network Connectivity\n";
+        cout << "5. Find Shortest Route\n";
+        cout << "6. Check Network Connectivity\n";
         cout << "0. Exit\n";
 
         cout << "========================================\n";
@@ -44,14 +43,10 @@ int main() {
                 break;
 
             case 5:
-                network.findNeighbors();
-                break;
-
-            case 6:
                 network.findShortestRoute();
                 break;
 
-            case 7:
+            case 6:
                 network.checkConnectivity();
                 break;
 
