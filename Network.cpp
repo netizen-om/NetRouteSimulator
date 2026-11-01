@@ -2,69 +2,120 @@
 
 using namespace std;
 
-// Constructor initializes an empty network with 1-based indexing
+// Constructor
 Network::Network() {
-    routerCount = 0;
-    adjList.resize(1);
+    nextRouterID = 1;
 }
 
-// Function to add a router with an automatically assigned integer ID
+// Finds a router using its ID
+Router* Network::findRouter(int id) {
+    for (Router& router : routers) {
+        if (router.getRouterID() == id) {
+            return &router;
+        }
+    }
+
+    return nullptr;
+}
+
+// Add a new router
 void Network::addRouter() {
-    routerCount++;
-    adjList.resize(routerCount + 1);
-    cout << "Router added successfully with ID: " << routerCount << "\n";
+    routers.push_back(Router(nextRouterID));
+
+    cout << "Router added successfully with ID: "
+         << nextRouterID << "\n";
+
+    nextRouterID++;
 }
 
-// Function to connect two existing routers with a positive cost
+// Connect two routers
 void Network::connectRouters() {
     int router1, router2, cost;
 
     cout << "Enter first router ID: ";
     cin >> router1;
+
     cout << "Enter second router ID: ";
     cin >> router2;
+
     cout << "Enter link cost: ";
     cin >> cost;
 
-    // Validate that both routers exist
-    if (router1 < 1 || router1 > routerCount || router2 < 1 || router2 > routerCount) {
+    Router* r1 = findRouter(router1);
+    Router* r2 = findRouter(router2);
+
+    if (r1 == nullptr || r2 == nullptr) {
         cout << "Error: One or both router IDs do not exist.\n";
         return;
     }
 
-    // Validate self-connection
     if (router1 == router2) {
         cout << "Error: Cannot connect a router to itself.\n";
         return;
     }
 
-    // Validate positive link cost
     if (cost <= 0) {
-        cout << "Error: Link cost must be a positive integer.\n";
+        cout << "Error: Link cost must be positive.\n";
         return;
     }
 
-    // Check if a connection already exists between router1 and router2
-    for (const Edge& edge : adjList[router1]) {
+    for (const Edge& edge : r1->getConnections()) {
         if (edge.to == router2) {
-            cout << "Error: A connection already exists between router "
-                 << router1 << " and router " << router2 << ".\n";
+            cout << "Error: Connection already exists.\n";
             return;
         }
     }
 
     // Add bidirectional connection
-    adjList[router1].push_back({router2, cost});
-    adjList[router2].push_back({router1, cost});
+    r1->connections.push_back({router2, cost});
+    r2->connections.push_back({router1, cost});
 
-    cout << "Successfully connected router " << router1 << " and router "
-         << router2 << " with cost " << cost << ".\n";
+    cout << "Routers connected successfully.\n";
 }
 
-// Function to display the network topology
+// Remove a router
+void Network::removeRouter() {
+    int id;
+
+    cout << "Enter router ID to remove: ";
+    cin >> id;
+
+    Router* router = findRouter(id);
+
+    if (router == nullptr) {
+        cout << "Error: Router does not exist.\n";
+        return;
+    }
+
+    // Remove connections to this router from other routers
+    for (Router& r : routers) {
+        vector<Edge>& edges = r.connections;
+
+        edges.erase(
+            remove_if(edges.begin(), edges.end(),
+                [id](const Edge& edge) {
+                    return edge.to == id;
+                }),
+            edges.end()
+        );
+    }
+
+    // Remove the router itself
+    routers.erase(
+        remove_if(routers.begin(), routers.end(),
+            [id](const Router& r) {
+                return r.getRouterID() == id;
+            }),
+        routers.end()
+    );
+
+    cout << "Router " << id << " removed successfully.\n";
+}
+
+// Display network topology
 void Network::displayNetwork() {
-    if (routerCount == 0) {
-        cout << "The network is empty. No routers added yet.\n";
+    if (routers.empty()) {
+        cout << "The network is empty.\n";
         return;
     }
 
@@ -72,128 +123,204 @@ void Network::displayNetwork() {
     cout << "           NETWORK TOPOLOGY\n";
     cout << "========================================\n";
 
-    for (int i = 1; i <= routerCount; ++i) {
-        cout << "Router " << i << " -> ";
-        if (adjList[i].empty()) {
-            cout << "[No connections (Isolated)]\n";
+    for (const Router& router : routers) {
+        cout << "Router " << router.getRouterID() << " -> ";
+
+        const vector<Edge>& edges = router.getConnections();
+
+        if (edges.empty()) {
+            cout << "[No connections (Isolated)]";
         } else {
-            for (size_t j = 0; j < adjList[i].size(); ++j) {
-                if (j > 0) {
+            for (size_t i = 0; i < edges.size(); i++) {
+                if (i > 0) {
                     cout << ", ";
                 }
-                cout << "Router " << adjList[i][j].to << " (Cost: " << adjList[i][j].cost << ")";
+
+                cout << "Router " << edges[i].to
+                     << " (Cost: " << edges[i].cost << ")";
             }
-            cout << "\n";
         }
+
+        cout << "\n";
     }
+
     cout << "========================================\n";
 }
 
-// Function to find the shortest route between two routers using Dijkstra's algorithm
+// Find all neighbors of a router
+void Network::findNeighbors() {
+    int id;
+
+    cout << "Enter router ID: ";
+    cin >> id;
+
+    Router* router = findRouter(id);
+
+    if (router == nullptr) {
+        cout << "Error: Router does not exist.\n";
+        return;
+    }
+
+    cout << "\nNeighbors of Router " << id << ":\n";
+
+    const vector<Edge>& edges = router->getConnections();
+
+    if (edges.empty()) {
+        cout << "This router has no connections.\n";
+        return;
+    }
+
+    for (const Edge& edge : edges) {
+        cout << "Router " << edge.to
+             << " | Link Cost: " << edge.cost << "\n";
+    }
+}
+
+// Check network connectivity using BFS
+void Network::checkConnectivity() {
+    if (routers.empty()) {
+        cout << "The network is empty.\n";
+        return;
+    }
+
+    vector<int> visited(nextRouterID, 0);
+    queue<int> q;
+
+    int startID = routers[0].getRouterID();
+
+    q.push(startID);
+    visited[startID] = 1;
+
+    int count = 0;
+
+    while (!q.empty()) {
+        int current = q.front();
+        q.pop();
+
+        count++;
+
+        Router* router = findRouter(current);
+
+        for (const Edge& edge : router->getConnections()) {
+            if (!visited[edge.to]) {
+                visited[edge.to] = 1;
+                q.push(edge.to);
+            }
+        }
+    }
+
+    cout << "\nNetwork Connectivity:\n";
+
+    if (count == routers.size()) {
+        cout << "The network is CONNECTED.\n";
+        cout << "All routers are reachable from each other.\n";
+    } else {
+        cout << "The network is DISCONNECTED.\n";
+        cout << "Some routers are not reachable.\n";
+    }
+}
+
+// Find shortest route using Dijkstra's algorithm
 void Network::findShortestRoute() {
     int source, destination;
 
     cout << "Enter source router ID: ";
     cin >> source;
+
     cout << "Enter destination router ID: ";
     cin >> destination;
 
-    // Validate router IDs
-    if (source < 1 || source > routerCount || destination < 1 || destination > routerCount) {
-        cout << "Error: Invalid router ID. Router does not exist.\n";
+    if (findRouter(source) == nullptr ||
+        findRouter(destination) == nullptr) {
+        cout << "Error: Invalid router ID.\n";
         return;
     }
 
-    // Trivial case: source is destination
     if (source == destination) {
-        cout << "\n========================================\n";
-        cout << "            SHORTEST ROUTE\n";
-        cout << "========================================\n";
-        cout << "Source Router: " << source << "\n";
-        cout << "Destination Router: " << destination << "\n";
         cout << "Shortest Path: " << source << "\n";
         cout << "Total Cost: 0\n";
-        cout << "========================================\n";
         return;
     }
 
-    const int INF = 1000000000; // Large number representing infinity
+    const int INF = 1000000000;
 
-    // distance[i] stores the minimum cost from source to router i
-    vector<int> distance(routerCount + 1, INF);
+    vector<int> distance(nextRouterID, INF);
+    vector<int> parent(nextRouterID, -1);
+    vector<bool> visited(nextRouterID, false);
 
-    // parent[i] stores the previous router on the shortest path
-    vector<int> parent(routerCount + 1, -1);
+    priority_queue<pair<int, int>,
+                   vector<pair<int, int>>,
+                   greater<pair<int, int>>> pq;
 
-    // visited[i] tracks whether the shortest distance to router i is finalized
-    vector<bool> visited(routerCount + 1, false);
-
-    // Min-priority queue storing pairs of (cost, routerId)
-    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
-
-    // Step 1: Initialize the source distance to 0 and push into queue
     distance[source] = 0;
     pq.push({0, source});
 
     while (!pq.empty()) {
-        // Step 2: Extract the router with the smallest known distance
         int currentCost = pq.top().first;
-        int currentRouter = pq.top().second;
+        int current = pq.top().second;
         pq.pop();
 
-        // Skip if this router has already been visited
-        if (visited[currentRouter]) {
+        if (visited[current]) {
             continue;
         }
-        visited[currentRouter] = true;
 
-        // Stop early if the destination router is reached
-        if (currentRouter == destination) {
+        visited[current] = true;
+
+        if (current == destination) {
             break;
         }
 
-        // Step 3: Check all neighbors of the current router
-        for (const Edge& edge : adjList[currentRouter]) {
-            int neighbor = edge.to;
-            int linkCost = edge.cost;
+        Router* router = findRouter(current);
 
-            // Relaxation step: update neighbor distance if a shorter path is found
-            if (!visited[neighbor] && currentCost + linkCost < distance[neighbor]) {
-                distance[neighbor] = currentCost + linkCost;
-                parent[neighbor] = currentRouter;
-                pq.push({distance[neighbor], neighbor});
+        for (const Edge& edge : router->getConnections()) {
+            int neighbor = edge.to;
+            int newCost = currentCost + edge.cost;
+
+            if (!visited[neighbor] &&
+                newCost < distance[neighbor]) {
+
+                distance[neighbor] = newCost;
+                parent[neighbor] = current;
+
+                pq.push({newCost, neighbor});
             }
         }
     }
 
-    // Step 4: Check if a path to the destination exists
     if (distance[destination] == INF) {
         cout << "No route exists between these routers.\n";
         return;
     }
 
-    // Step 5: Reconstruct the path from destination back to source
     vector<int> path;
-    int curr = destination;
-    while (curr != -1) {
-        path.push_back(curr);
-        curr = parent[curr];
+
+    int current = destination;
+
+    while (current != -1) {
+        path.push_back(current);
+        current = parent[current];
     }
+
     reverse(path.begin(), path.end());
 
-    // Display the shortest route results
     cout << "\n========================================\n";
     cout << "            SHORTEST ROUTE\n";
     cout << "========================================\n";
+
     cout << "Source Router: " << source << "\n";
     cout << "Destination Router: " << destination << "\n";
+
     cout << "Shortest Path: ";
-    for (size_t i = 0; i < path.size(); ++i) {
+
+    for (size_t i = 0; i < path.size(); i++) {
         if (i > 0) {
             cout << " -> ";
         }
+
         cout << path[i];
     }
+
     cout << "\nTotal Cost: " << distance[destination] << "\n";
+
     cout << "========================================\n";
 }

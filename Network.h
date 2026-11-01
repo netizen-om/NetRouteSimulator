@@ -6,35 +6,42 @@
 #include <queue>
 #include <algorithm>
 
+#include "Router.h"
+
 using namespace std;
 
-// Represents a connection (link) to a neighboring router
-struct Edge {
-    int to;    // Neighbor router ID
-    int cost;  // Cost/weight of the link
-};
-
-// Manages network routers, connections, and shortest-path routing
 class Network {
 private:
-    int routerCount;              // Total number of routers in the network
-    vector<vector<Edge>> adjList; // Adjacency list: adjList[u] stores edges connected to router u
+    vector<Router> routers;
+    int nextRouterID;
+
+    // Finds a router using its ID
+    Router* findRouter(int id);
 
 public:
-    // Constructor initializes an empty network
+    // Constructor
     Network();
 
-    // Adds a router with an automatically assigned integer ID
+    // Add a new router
     void addRouter();
 
-    // Prompts user and connects two existing routers with a positive cost
+    // Connect two routers
     void connectRouters();
 
-    // Displays the complete network topology
+    // Remove a router
+    void removeRouter();
+
+    // Display complete network
     void displayNetwork();
 
-    // Prompts user and finds shortest route using Dijkstra's algorithm
+    // Find shortest route using Dijkstra's algorithm
     void findShortestRoute();
+
+    // Display all neighbors of a router
+    void findNeighbors();
+
+    // Check whether the network is connected
+    void checkConnectivity();
 };
 
-#endif // NETWORK_H
+#endif
