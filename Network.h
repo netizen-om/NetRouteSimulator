@@ -13,7 +13,7 @@ using namespace std;
 class Network {
 private:
     vector<Router> routers;
-    int nextRouterID;
+    static int nextRouterID;
 
     // Finds a router using its ID
     Router* findRouter(int id);
@@ -36,9 +36,6 @@ public:
 
     // Find shortest route using Dijkstra's algorithm
     void findShortestRoute();
-
-    // Display all neighbors of a router
-    void findNeighbors();
 
     // Check whether the network is connected
     void checkConnectivity();

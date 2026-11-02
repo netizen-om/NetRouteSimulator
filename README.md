@@ -127,7 +127,7 @@ classDiagram
 
     class Network {
         -vector~Router~ routers
-        -int nextRouterID
+        -int nextRouterID$
         -Router* findRouter(int id)
         +Network()
         +void addRouter()
@@ -157,7 +157,7 @@ classDiagram
 
 3. **`class Network`** (`Network.h`, `Network.cpp`):
    - Manages the overall network state and graph operations.
-   - Private attributes: `routers` (`vector<Router>`) and `nextRouterID`.
+   - Private attributes: `routers` (`vector<Router>`) and `static int nextRouterID` (shared across all `Network` instances to guarantee globally unique IDs).
    - Private helper: `Router* findRouter(int id)` for ID lookup.
    - Public methods: `addRouter()`, `connectRouters()`, `removeRouter()`, `displayNetwork()`, `findShortestRoute()`, and `checkConnectivity()`.
 
@@ -172,6 +172,7 @@ classDiagram
 | :--- | :--- | :--- |
 | **Classes & Objects** | Dedicated `Router` and `Network` classes model physical network entities and network management. | `Router.h`, `Network.h` |
 | **Encapsulation** | State variables (`routerID`, `connections`, `routers`, `nextRouterID`) are `private`. External access occurs strictly through public methods. | `Router.h`, `Network.h` |
+| **Static Data Member** | `static int nextRouterID` belongs to the class rather than any single instance, shared across all `Network` objects so router IDs remain unique and are never reused. | `Network.h`, `Network.cpp` |
 | **Data Hiding** | Internal representation (vectors, pointers, algorithmic state) is concealed from outside callers. | `Router.h`, `Network.h` |
 | **Friend Class** | `Router` declares `friend class Network;`. This permits `Network` to modify connection lists directly during link creation and deletion without exposing public mutators to the rest of the application. | `Router.h` |
 | **Composition** | `Network` contains a collection of `Router` objects (`vector<Router>`), and each `Router` contains a collection of `Edge` objects (`vector<Edge>`). | `Network.h`, `Router.h` |
@@ -343,3 +344,6 @@ To create custom test scenarios for specific viva questions or test cases:
 
 8. **Q: How does the program detect that no path exists between two routers?**
    - **A:** All router tentative distances are initialized to infinity (`INF = 1000000000`). If `distance[destination]` remains `INF` after Dijkstra's algorithm completes, no connecting route exists.
+
+9. **Q: Why is `nextRouterID` declared as a `static` data member in `Network`?**
+   - **A:** Being `static`, `nextRouterID` belongs to the `Network` class rather than any individual `Network` instance. It is shared across all `Network` objects and initialized once (`int Network::nextRouterID = 1;`). This guarantees that router IDs are globally unique, increment sequentially, and are never reused even if routers are removed or multiple networks are instantiated.

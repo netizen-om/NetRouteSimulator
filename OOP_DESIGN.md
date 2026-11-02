@@ -33,7 +33,7 @@ classDiagram
 
     class Network {
         -vector~Router~ routers
-        -int nextRouterID
+        -int nextRouterID$
         -Router* findRouter(int id)
         +Network()
         +void addRouter()
@@ -79,11 +79,11 @@ classDiagram
 - **Role**: Manages the network topology, validates user operations, and executes graph algorithms.
 - **Private Data Members**:
   - `vector<Router> routers`: Collection of all active router objects in the network.
-  - `int nextRouterID`: Counter tracking the next automatic integer ID (`1, 2, 3...`).
+  - `static int nextRouterID`: Static counter tracking the next automatic integer ID (`1, 2, 3...`) shared globally across all `Network` instances.
 - **Private Member Functions**:
   - `Router* findRouter(int id)`: Helper method performing linear search for a router by its ID, returning a pointer to the router or `nullptr` if not found.
 - **Public Member Functions**:
-  - `Network()`: Constructor initializing `nextRouterID = 1`.
+  - `Network()`: Constructor. The static member `nextRouterID` is initialized once globally to `1` in `Network.cpp`.
   - `void addRouter()`: Creates and registers a new `Router` instance.
   - `void connectRouters()`: Prompts for two router IDs and cost, validates them, and establishes a bidirectional link.
   - `void removeRouter()`: Removes a specified router and purges all incoming/outgoing connections to it across the network.
@@ -99,6 +99,7 @@ classDiagram
 | :--- | :--- | :--- |
 | **Classes & Objects** | Real-world network entities are modeled as explicit C++ classes (`Router` and `Network`). | [Router.h](file:///f:/DEV/NetRouteSimulator/Router.h), [Network.h](file:///f:/DEV/NetRouteSimulator/Network.h) |
 | **Encapsulation** | State variables (`routerID`, `connections`, `routers`, `nextRouterID`) are declared `private`. Internal data is shielded against direct modification from outside callers. | [Router.h](file:///f:/DEV/NetRouteSimulator/Router.h), [Network.h](file:///f:/DEV/NetRouteSimulator/Network.h) |
+| **Static Data Member** | `static int nextRouterID` is a class-level variable shared across all `Network` objects, ensuring globally unique, monotonically increasing IDs that are never reused. | [Network.h](file:///f:/DEV/NetRouteSimulator/Network.h), [Network.cpp](file:///f:/DEV/NetRouteSimulator/Network.cpp) |
 | **Data Hiding** | The internal graph representations, indexing mechanics, and algorithmic structures (`visited`, `parent`, `distance`, priority queues) are concealed within member functions. | [Network.cpp](file:///f:/DEV/NetRouteSimulator/Network.cpp) |
 | **Friend Class** | `Router` declares `friend class Network;`. This allows `Network` to modify `connections` directly during link creation and deletion without exposing public setters to `main()` or other external code. | [Router.h](file:///f:/DEV/NetRouteSimulator/Router.h#L21-L22) |
 | **Composition & Aggregation** | `Network` has a collection of `Router` objects (`vector<Router>`), and each `Router` has a collection of `Edge` objects (`vector<Edge>`). | [Network.h](file:///f:/DEV/NetRouteSimulator/Network.h#L15), [Router.h](file:///f:/DEV/NetRouteSimulator/Router.h#L19) |
@@ -159,3 +160,10 @@ In earlier prototypes, the network was stored simply as an adjacency list of int
 - All routers in this simulator adhere to identical behavior and structure.
 - There are no specialized hardware types (e.g., WirelessRouter, FiberSwitch) requiring subclassing or virtual table dispatch.
 - Adding abstract base classes would be overengineering and violate the **YAGNI** (*You Aren't Gonna Need It*) principle.
+
+### Why `nextRouterID` is a static data member
+- In computer networks, router identifiers must be globally unique across all subnetworks or network partitions.
+- By declaring `static int nextRouterID`, the variable is bound to the `Network` class itself rather than a single instance.
+- It is initialized exactly once (`int Network::nextRouterID = 1;` in `Network.cpp`).
+- If multiple `Network` objects are instantiated, they share the single sequential counter without ID collisions.
+- When routers are removed, `nextRouterID` is not decremented, ensuring deleted IDs are never recycled or confused with newly added routers.

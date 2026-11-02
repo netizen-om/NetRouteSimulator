@@ -2,9 +2,11 @@
 
 using namespace std;
 
+// Initialize static member
+int Network::nextRouterID = 1;
+
 // Constructor
 Network::Network() {
-    nextRouterID = 1;
 }
 
 // Finds a router using its ID
@@ -182,7 +184,7 @@ void Network::checkConnectivity() {
 
     cout << "\nNetwork Connectivity:\n";
 
-    if (count == routers.size()) {
+    if (count == (int)routers.size()) {
         cout << "The network is CONNECTED.\n";
         cout << "All routers are reachable from each other.\n";
     } else {
